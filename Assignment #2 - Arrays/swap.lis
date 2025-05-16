@@ -1,0 +1,111 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Program name: "Arrays".  The intent of this program is to sort, print, and compute the mean of an array of float numbers   *
+     3                                  ; in which the array was constructed using user input. The educational purpose is to gain experience programming with arrays *                                                              *
+     4                                  ; Copyright (C) 2025  Solivan Hiep                                                                                           *
+     5                                  ; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+     6                                  ; version 3 as published by the Free Software Foundation.                                                                    *
+     7                                  ; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+     8                                  ; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+     9                                  ; A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    10                                  ;****************************************************************************************************************************
+    11                                  
+    12                                  
+    13                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    14                                  
+    15                                  ;Author information
+    16                                  ;  Author name: Solivan Hiep
+    17                                  ;  Author email: hiepsolivan@csu.fullerton.edu
+    18                                  ;  CWID: 8848458756
+    19                                  ;  Class: CPSC 240-03 - Class Nbr 13604
+    20                                  ;
+    21                                  ;Program information
+    22                                  ;  Program name: Arrays
+    23                                  ;  Programming languages: Six modules in X86, one module in C, one module in C++, and one in bash
+    24                                  ;  Date program began: 2025-Feb-09
+    25                                  ;  Date of last update: 2025-Feb-20
+    26                                  ;  Files in the program: manager.asm, input_array.asm, isfloat.asm, output_array.asm, sum.asm, swap.asm, sort.c, main.c, r.sh
+    27                                  ;
+    28                                  ;Purpose
+    29                                  ;  The intent of this program is to sort, print, and compute the mean of an array of float numbers
+    30                                  ;  in which the array was constructed using user input.
+    31                                  ;  The educational purpose is to gain experience programming with arrays.
+    32                                  ;
+    33                                  ;This file
+    34                                  ;  File name: swap.asm
+    35                                  ;  Language: X86-64
+    36                                  ;  Max page width: 172 columns
+    37                                  ;  Assemble: nasm -f elf64 -l swap.lis -o swap.o swap.asm
+    38                                  ;  Page width: 172 columns
+    39                                  ;  Optimal print specification: Landscape, 7 points, monospace, 8½x11 paper
+    40                                  ;  Prototype of this function: swap(double * float_1, double * float_2)
+    41                                  ;
+    42                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    43                                  ;
+    44                                  ;===== Begin code area ====================================================================================================================================================
+    45                                  
+    46                                  ; Declarations
+    47                                  global swap
+    48                                  
+    49                                  ; Declare initialized arrays
+    50                                  segment .data
+    51                                  
+    52                                  ; Declare uninitialized arrays
+    53                                  segment .bss
+    54                                  align 64
+    55 00000000 <res 340h>              backup_storage_area resb 832
+    56                                  
+    57                                  segment .text
+    58                                  swap:
+    59                                  
+    60                                  ; Backup the GPRs
+    61 00000000 55                      push rbp
+    62 00000001 4889E5                  mov rbp, rsp
+    63 00000004 53                      push rbx
+    64 00000005 51                      push rcx
+    65 00000006 52                      push rdx
+    66 00000007 57                      push rdi
+    67 00000008 56                      push rsi
+    68 00000009 4150                    push r8
+    69 0000000B 4151                    push r9
+    70 0000000D 4152                    push r10
+    71 0000000F 4153                    push r11
+    72 00000011 4154                    push r12
+    73 00000013 4155                    push r13
+    74 00000015 4156                    push r14
+    75 00000017 4157                    push r15
+    76 00000019 9C                      pushf
+    77                                  
+    78                                  ; Backup other registers/sse registers
+    79 0000001A B807000000              mov rax, 7
+    80 0000001F BA00000000              mov rdx, 0
+    81 00000024 0FAE2425[00000000]      xsave [backup_storage_area]
+    82                                  
+    83                                  ; Place the dereferenced values of the two received arguments into temporary locations. Then move into opposing registers to swap
+    84 0000002C 488B07                  mov rax, [rdi]
+    85 0000002F 488B16                  mov rdx, [rsi]
+    86 00000032 488917                  mov [rdi], rdx
+    87 00000035 488906                  mov [rsi], rax
+    88                                  
+    89                                  ; Restore the values to non-GPRs/sse registers
+    90 00000038 B807000000              mov rax, 7
+    91 0000003D BA00000000              mov rdx, 0
+    92 00000042 0FAE2C25[00000000]      xrstor [backup_storage_area]
+    93                                  
+    94                                  ; Restore the GPRs
+    95 0000004A 9D                      popf
+    96 0000004B 415F                    pop r15
+    97 0000004D 415E                    pop r14
+    98 0000004F 415D                    pop r13
+    99 00000051 415C                    pop r12
+   100 00000053 415B                    pop r11
+   101 00000055 415A                    pop r10
+   102 00000057 4159                    pop r9
+   103 00000059 4158                    pop r8
+   104 0000005B 5E                      pop rsi
+   105 0000005C 5F                      pop rdi
+   106 0000005D 5A                      pop rdx
+   107 0000005E 59                      pop rcx
+   108 0000005F 5B                      pop rbx
+   109 00000060 5D                      pop rbp   ;Restore rbp to the base of the activation record of the caller program
+   110 00000061 C3                      ret
+   111                                  ;End of the function swap ====================================================================

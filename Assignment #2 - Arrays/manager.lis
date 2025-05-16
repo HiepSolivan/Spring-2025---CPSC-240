@@ -1,0 +1,271 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Program name: "Arrays".  The intent of this program is to sort, print, and compute the mean of an array of float numbers   *
+     3                                  ; in which the array was constructed using user input. The educational purpose is to gain experience programming with arrays *                                                              *
+     4                                  ; Copyright (C) 2025  Solivan Hiep                                                                                           *
+     5                                  ; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+     6                                  ; version 3 as published by the Free Software Foundation.                                                                    *
+     7                                  ; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+     8                                  ; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+     9                                  ; A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    10                                  ;****************************************************************************************************************************
+    11                                  
+    12                                  
+    13                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    14                                  
+    15                                  ;Author information
+    16                                  ;  Author name: Solivan Hiep
+    17                                  ;  Author email: hiepsolivan@csu.fullerton.edu
+    18                                  ;  CWID: 8848458756
+    19                                  ;  Class: CPSC 240-03 - Class Nbr 13604
+    20                                  ;
+    21                                  ;Program information
+    22                                  ;  Program name: Arrays
+    23                                  ;  Programming languages: Six modules in X86, one module in C, one module in C++, and one in bash
+    24                                  ;  Date program began: 2025-Feb-09
+    25                                  ;  Date of last update: 2025-Feb-20
+    26                                  ;  Files in the program: manager.asm, input_array.asm, isfloat.asm, output_array.asm, sum.asm, swap.asm, sort.c, main.c, r.sh
+    27                                  ;
+    28                                  ;Purpose
+    29                                  ;  The intent of this program is to sort, print, and compute the mean of an array of float numbers
+    30                                  ;  in which the array was constructed using user input.
+    31                                  ;  The educational purpose is to gain experience programming with arrays.
+    32                                  ;
+    33                                  ;This file
+    34                                  ;  File name: manager.asm
+    35                                  ;  Language: X86-64
+    36                                  ;  Max page width: 172 columns
+    37                                  ;  Assemble: nasm -f elf64 -l manager.lis -o manager.o manager.asm
+    38                                  ;  Page width: 172 columns
+    39                                  ;  Optimal print specification: Landscape, 7 points, monospace, 8½x11 paper
+    40                                  ;  Prototype of this function: double manager()
+    41                                  ;
+    42                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    43                                  ;
+    44                                  ;===== Begin code area ====================================================================================================================================================
+    45                                  
+    46                                  ; Declarations
+    47                                  extern printf
+    48                                  
+    49                                  extern input_array
+    50                                  extern output_array
+    51                                  extern sort
+    52                                  extern sum
+    53                                  global manager
+    54                                  
+    55                                  ; Declare initialized arrays
+    56                                  segment .data
+    57 00000000 546869732070726F67-     management_intro_prompt db "This program will manage your arrays of 64-bit floats", 10, 0
+    57 00000009 72616D2077696C6C20-
+    57 00000012 6D616E61676520796F-
+    57 0000001B 757220617272617973-
+    57 00000024 206F662036342D6269-
+    57 0000002D 7420666C6F6174730A-
+    57 00000036 00                 
+    58 00000037 466F72207468652061-     array_intro_prompt db "For the array enter a sequence of 64-bit floats separated by white space.", 10, 0
+    58 00000040 7272617920656E7465-
+    58 00000049 722061207365717565-
+    58 00000052 6E6365206F66203634-
+    58 0000005B 2D62697420666C6F61-
+    58 00000064 747320736570617261-
+    58 0000006D 746564206279207768-
+    58 00000076 697465207370616365-
+    58 0000007F 2E0A00             
+    59 00000082 416674657220746865-     last_input_intro_prompt db "After the last input press enter followed by Control+D: ", 10, 0
+    59 0000008B 206C61737420696E70-
+    59 00000094 757420707265737320-
+    59 0000009D 656E74657220666F6C-
+    59 000000A6 6C6F77656420627920-
+    59 000000AF 436F6E74726F6C2B44-
+    59 000000B8 3A200A00           
+    60 000000BC 0A5468657365206E75-     received_numbers_for_array_prompt db 10, "These numbers were received and placed into an array", 10, 0
+    60 000000C5 6D6265727320776572-
+    60 000000CE 652072656365697665-
+    60 000000D7 6420616E6420706C61-
+    60 000000E0 63656420696E746F20-
+    60 000000E9 616E2061727261790A-
+    60 000000F2 00                 
+    61 000000F3 5468652073756D206F-     sum_prompt db "The sum of the inputted numbers is %.9lf", 10, 0
+    61 000000FC 662074686520696E70-
+    61 00000105 7574746564206E756D-
+    61 0000010E 626572732069732025-
+    61 00000117 2E396C660A00       
+    62 0000011D 546865206172697468-     mean_prompt db "The arithmetic mean of the numbers in the array is %.6lf", 10, 0
+    62 00000126 6D65746963206D6561-
+    62 0000012F 6E206F662074686520-
+    62 00000138 6E756D626572732069-
+    62 00000141 6E2074686520617272-
+    62 0000014A 617920697320252E36-
+    62 00000153 6C660A00           
+    63 00000157 546869732069732074-     sort_results_prompt db "This is the array after the sort process completed:", 10, 0
+    63 00000160 686520617272617920-
+    63 00000169 616674657220746865-
+    63 00000172 20736F72742070726F-
+    63 0000017B 6365737320636F6D70-
+    63 00000184 6C657465643A0A00   
+    64                                  
+    65 0000018C 257300                  string_format db "%s", 0
+    66                                  
+    67                                  ; Declare uninitialized arrays
+    68                                  segment .bss
+    69 00000000 <res 180h>              the_array resq 48
+    70                                  
+    71                                  align 64
+    72 00000180 <res 340h>              backup_storage_area resb 832
+    73                                  
+    74                                  segment .text
+    75                                  manager:
+    76                                  
+    77                                  ; Backup the GPRs
+    78 00000000 55                      push rbp
+    79 00000001 4889E5                  mov rbp, rsp
+    80 00000004 53                      push rbx
+    81 00000005 51                      push rcx
+    82 00000006 52                      push rdx
+    83 00000007 57                      push rdi
+    84 00000008 56                      push rsi
+    85 00000009 4150                    push r8
+    86 0000000B 4151                    push r9
+    87 0000000D 4152                    push r10
+    88 0000000F 4153                    push r11
+    89 00000011 4154                    push r12
+    90 00000013 4155                    push r13
+    91 00000015 4156                    push r14
+    92 00000017 4157                    push r15
+    93 00000019 9C                      pushf
+    94                                  
+    95                                  ; Backup other registers/sse registers
+    96 0000001A B807000000              mov rax, 7
+    97 0000001F BA00000000              mov rdx, 0
+    98 00000024 0FAE2425[80010000]      xsave [backup_storage_area]
+    99                                  
+   100                                  ; Print out the prompt describing what the program is
+   101 0000002C B800000000              mov rax, 0
+   102 00000031 48BF-                   mov rdi, string_format
+   102 00000033 [8C01000000000000] 
+   103 0000003B 48BE-                   mov rsi, management_intro_prompt
+   103 0000003D [0000000000000000] 
+   104 00000045 E8(00000000)            call printf
+   105                                  
+   106                                  ; Print out the prompt describing how to input numbers for the array
+   107 0000004A B800000000              mov rax, 0
+   108 0000004F 48BF-                   mov rdi, string_format
+   108 00000051 [8C01000000000000] 
+   109 00000059 48BE-                   mov rsi, array_intro_prompt
+   109 0000005B [3700000000000000] 
+   110 00000063 E8(00000000)            call printf
+   111                                  
+   112                                  ; Print out the prompt describing how to input the last input
+   113 00000068 B800000000              mov rax, 0
+   114 0000006D 48BF-                   mov rdi, string_format
+   114 0000006F [8C01000000000000] 
+   115 00000077 48BE-                   mov rsi, last_input_intro_prompt
+   115 00000079 [8200000000000000] 
+   116 00000081 E8(00000000)            call printf
+   117                                  
+   118                                  ; Begin inputting the array through input_array [long input_array(double array[], long capacity)]
+   119 00000086 B800000000              mov rax, 0
+   120 0000008B 48BF-                   mov rdi, the_array
+   120 0000008D [0000000000000000] 
+   121 00000095 BE30000000              mov rsi, 48
+   122 0000009A E8(00000000)            call input_array ; Call input_array and get back the size (used to compute mean) which is stored in rax
+   123                                  
+   124                                  ; Store the size of the array into a non-volatile register
+   125 0000009F 4989C4                  mov r12, rax
+   126                                  
+   127                                  ; Print out prompt affirming what numbers were successfully inputted into the array
+   128 000000A2 B800000000              mov rax, 0
+   129 000000A7 48BF-                   mov rdi, string_format
+   129 000000A9 [8C01000000000000] 
+   130 000000B1 48BE-                   mov rsi, received_numbers_for_array_prompt
+   130 000000B3 [BC00000000000000] 
+   131 000000BB E8(00000000)            call printf
+   132                                  
+   133                                  ; Print out what numbers were successfully inputted into the array by calling output_array [void output_array(double array[], long size)]
+   134 000000C0 B800000000              mov rax, 0
+   135 000000C5 48BF-                   mov rdi, the_array
+   135 000000C7 [0000000000000000] 
+   136 000000CF 4C89E6                  mov rsi, r12 ; [r12 = size of array]
+   137 000000D2 E8(00000000)            call output_array
+   138                                  
+   139                                  ; Find the sum of all the elements in the array by calling sum [double sum(double array[], long size)], then store it in a non-volatile register
+   140 000000D7 B800000000              mov rax, 0
+   141 000000DC 48BF-                   mov rdi, the_array
+   141 000000DE [0000000000000000] 
+   142 000000E6 4C89E6                  mov rsi, r12 ; [r12 = size of array]
+   143 000000E9 E8(00000000)            call sum
+   144 000000EE F2440F10F8              movsd xmm15, xmm0
+   145                                  
+   146                                  ; Print out the sum of all the elements in the array
+   147 000000F3 B801000000              mov rax, 1
+   148 000000F8 48BF-                   mov rdi, sum_prompt
+   148 000000FA [F300000000000000] 
+   149 00000102 F2410F10C7              movsd xmm0, xmm15
+   150 00000107 E8(00000000)            call printf
+   151                                  
+   152                                  ; Compute the mean of the elements in the array by taking the sum [xmm15] and dividing it by the size [r12]
+   153 0000010C F2490F2ACC              cvtsi2sd xmm1, r12 ; Convert Integer [r12] to Scalar Double
+   154 00000111 F2410F10D7              movsd xmm2, xmm15 ; Because xmm1 is empty, store xmm15 to prepare for operations
+   155 00000116 F20F5ED1                divsd xmm2, xmm1
+   156 0000011A F2440F10F2              movsd xmm14, xmm2 ; Store the mean into the non-volatile register xmm14
+   157                                  
+   158                                  ; Print out the mean of all the elements in the array
+   159 0000011F B801000000              mov rax, 1
+   160 00000124 48BF-                   mov rdi, mean_prompt
+   160 00000126 [1D01000000000000] 
+   161 0000012E F2410F10C6              movsd xmm0, xmm14
+   162 00000133 E8(00000000)            call printf
+   163                                  
+   164                                  ; Print out the array after sorting
+   165 00000138 B800000000              mov rax, 0
+   166 0000013D 48BF-                   mov rdi, string_format
+   166 0000013F [8C01000000000000] 
+   167 00000147 48BE-                   mov rsi, sort_results_prompt
+   167 00000149 [5701000000000000] 
+   168 00000151 E8(00000000)            call printf
+   169                                  
+   170                                  ; Sort the array using insertion sort [void sort (double array[], long array_size)]
+   171 00000156 B800000000              mov rax, 0
+   172 0000015B 48BF-                   mov rdi, the_array
+   172 0000015D [0000000000000000] 
+   173 00000165 4C89E6                  mov rsi, r12
+   174 00000168 E8(00000000)            call sort
+   175                                  
+   176                                  ; Print out the sorted array by calling output_array [void output_array(double array[], long size)]
+   177 0000016D B800000000              mov rax, 0
+   178 00000172 48BF-                   mov rdi, the_array
+   178 00000174 [0000000000000000] 
+   179 0000017C 4C89E6                  mov rsi, r12 ; [r12 = size of array]
+   180 0000017F E8(00000000)            call output_array
+   181                                  
+   182                                  ; Move the sum to the stack before restoring SSEs to maintain the value
+   183 00000184 B800000000              mov rax, 0
+   184 00000189 6A00                    push qword 0
+   185 0000018B F2440F113C24            movsd [rsp], xmm15
+   186                                  
+   187                                  ; Restore the values to non-GPRs/sse registers
+   188 00000191 B807000000              mov rax, 7
+   189 00000196 BA00000000              mov rdx, 0
+   190 0000019B 0FAE2C25[80010000]      xrstor [backup_storage_area]
+   191                                  
+   192                                  ; Send back the sum stored in rsp and pop the stack
+   193 000001A3 F20F100424              movsd xmm0, [rsp]
+   194 000001A8 58                      pop rax
+   195                                  
+   196                                  ; Restore the GPRs
+   197 000001A9 9D                      popf
+   198 000001AA 415F                    pop r15
+   199 000001AC 415E                    pop r14
+   200 000001AE 415D                    pop r13
+   201 000001B0 415C                    pop r12
+   202 000001B2 415B                    pop r11
+   203 000001B4 415A                    pop r10
+   204 000001B6 4159                    pop r9
+   205 000001B8 4158                    pop r8
+   206 000001BA 5E                      pop rsi
+   207 000001BB 5F                      pop rdi
+   208 000001BC 5A                      pop rdx
+   209 000001BD 59                      pop rcx
+   210 000001BE 5B                      pop rbx
+   211 000001BF 5D                      pop rbp   ;Restore rbp to the base of the activation record of the caller program
+   212 000001C0 C3                      ret
+   213                                  ;End of the function manager ====================================================================

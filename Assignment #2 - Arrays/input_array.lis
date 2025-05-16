@@ -1,0 +1,232 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Program name: "Arrays".  The intent of this program is to sort, print, and compute the mean of an array of float numbers   *
+     3                                  ; in which the array was constructed using user input. The educational purpose is to gain experience programming with arrays *                                                              *
+     4                                  ; Copyright (C) 2025  Solivan Hiep                                                                                           *
+     5                                  ; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+     6                                  ; version 3 as published by the Free Software Foundation.                                                                    *
+     7                                  ; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+     8                                  ; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+     9                                  ; A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    10                                  ;****************************************************************************************************************************
+    11                                  
+    12                                  
+    13                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    14                                  
+    15                                  ;Author information
+    16                                  ;  Author name: Solivan Hiep
+    17                                  ;  Author email: hiepsolivan@csu.fullerton.edu
+    18                                  ;  CWID: 8848458756
+    19                                  ;  Class: CPSC 240-03 - Class Nbr 13604
+    20                                  ;
+    21                                  ;Program information
+    22                                  ;  Program name: Arrays
+    23                                  ;  Programming languages: Six modules in X86, one module in C, one module in C++, and one in bash
+    24                                  ;  Date program began: 2025-Feb-09
+    25                                  ;  Date of last update: 2025-Feb-20
+    26                                  ;  Files in the program: manager.asm, input_array.asm, isfloat.asm, output_array.asm, sum.asm, swap.asm, sort.c, main.c, r.sh
+    27                                  ;
+    28                                  ;Purpose
+    29                                  ;  The intent of this program is to sort, print, and compute the mean of an array of float numbers
+    30                                  ;  in which the array was constructed using user input.
+    31                                  ;  The educational purpose is to gain experience programming with arrays.
+    32                                  ;
+    33                                  ;This file
+    34                                  ;  File name: input_array.asm
+    35                                  ;  Language: X86-64
+    36                                  ;  Max page width: 172 columns
+    37                                  ;  Assemble: nasm -f elf64 -l input_array.lis -o input_array.o input_array.asm
+    38                                  ;  Page width: 172 columns
+    39                                  ;  Optimal print specification: Landscape, 7 points, monospace, 8½x11 paper
+    40                                  ;  Prototype of this function: void input_array(double array[], long size)
+    41                                  ;
+    42                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    43                                  ;
+    44                                  ;===== Begin code area ====================================================================================================================================================
+    45                                  
+    46                                  ; Declarations
+    47                                  extern atof
+    48                                  extern printf
+    49                                  extern scanf
+    50                                  
+    51                                  extern isfloat
+    52                                  global input_array
+    53                                  
+    54                                  ; Declare initialized arrays
+    55                                  segment .data
+    56 00000000 20202020546865206C-     invalid_input_msg db "    The last input was invalid and not entered into the array.  Try again.", 10, 0
+    56 00000009 61737420696E707574-
+    56 00000012 2077617320696E7661-
+    56 0000001B 6C696420616E64206E-
+    56 00000024 6F7420656E74657265-
+    56 0000002D 6420696E746F207468-
+    56 00000036 652061727261792E20-
+    56 0000003F 205472792061676169-
+    56 00000048 6E2E0A00           
+    57 0000004C 202020205468652061-     capacity_reached_msg db "    The array has reached its capacity.  Exiting...", 10, 0
+    57 00000055 727261792068617320-
+    57 0000005E 726561636865642069-
+    57 00000067 747320636170616369-
+    57 00000070 74792E202045786974-
+    57 00000079 696E672E2E2E0A00   
+    58                                  
+    59 00000081 20202000                whitespace db "   ", 0
+    60 00000085 257300                  string_format db "%s", 0
+    61                                  
+    62                                  ; Declare uninitialized arrays
+    63                                  segment .bss
+    64                                  align 64
+    65 00000000 <res 340h>              backup_storage_area resb 832
+    66                                  
+    67                                  segment .text
+    68                                  input_array:
+    69                                  
+    70                                  ; Backup the GPRs
+    71 00000000 55                      push rbp
+    72 00000001 4889E5                  mov rbp, rsp
+    73 00000004 53                      push rbx
+    74 00000005 51                      push rcx
+    75 00000006 52                      push rdx
+    76 00000007 57                      push rdi
+    77 00000008 56                      push rsi
+    78 00000009 4150                    push r8
+    79 0000000B 4151                    push r9
+    80 0000000D 4152                    push r10
+    81 0000000F 4153                    push r11
+    82 00000011 4154                    push r12
+    83 00000013 4155                    push r13
+    84 00000015 4156                    push r14
+    85 00000017 4157                    push r15
+    86 00000019 9C                      pushf
+    87                                  
+    88                                  ; Backup other registers/sse registers
+    89 0000001A B807000000              mov rax, 7
+    90 0000001F BA00000000              mov rdx, 0
+    91 00000024 0FAE2425[00000000]      xsave [backup_storage_area]
+    92                                  
+    93                                  ; Move the arguments received (the address to the array + array capacity) into non-volatile registers r12 and r13 to affect the actual array + future use in logic
+    94 0000002C 4989FC                  mov r12, rdi ; The array
+    95 0000002F 4989F5                  mov r13, rsi ; The array's capacity
+    96                                  
+    97                                  ; Maintain a counter for the array using the non-volatile register r14 to ensure no over-indexing
+    98 00000032 4D31F6                  xor r14, r14 ; Comparing r14 to itself via xor sets r14 to 0
+    99                                  
+   100                                  ; Kick of the main loop to ask for user input to insert into an array
+   101                                  top_of_loop:
+   102                                  
+   103                                  ; Check for over-indexing by determining if r14 >= r13. If so, exit. Otherwise, continue
+   104 00000035 4D39EE                  cmp r14, r13
+   105 00000038 7D66                    jge capacity_full
+   106                                  
+   107                                  ; Print out leading whitespace before input for formatting
+   108 0000003A B800000000              mov rax, 0
+   109 0000003F 48BF-                   mov rdi, string_format
+   109 00000041 [8500000000000000] 
+   110 00000049 48BE-                   mov rsi, whitespace
+   110 0000004B [8100000000000000] 
+   111 00000053 E8(00000000)            call printf
+   112                                  
+   113                                  ; Prompt for user input for the array. The input is received as a STRING
+   114 00000058 6A00                    push qword 0 ; Ensure scanf reads 64 bits
+   115 0000005A 6A00                    push qword 0
+   116 0000005C B800000000              mov rax, 0
+   117 00000061 48BF-                   mov rdi, string_format
+   117 00000063 [8500000000000000] 
+   118 0000006B 4889E6                  mov rsi, rsp
+   119 0000006E E8(00000000)            call scanf
+   120                                  
+   121                                  ; Check if scanf actually stored the value into the array [r12] by checking if the low of rax (eax) equals -1. If so, jump to scan_ended. Otherwise, continue.
+   122 00000073 83F8FF                  cmp eax, -1 ; Note: This comparison ALSO checks if the user pressed CTRL + D
+   123 00000076 7448                    je scan_ended
+   124                                  
+   125                                  ; Validate the most recent input by calling isfloat [bool isfloat(char [] input)]
+   126 00000078 4889E7                  mov rdi, rsp
+   127 0000007B E8(00000000)            call isfloat
+   128 00000080 4883F800                cmp rax, 0 ; If isfloat returned a 0, then we did not get a float
+   129 00000084 743E                    je try_again
+   130                                  
+   131                                  ; Now that we have a valid float, call atof [double atof (char str[])] to convert the array of ASCII chars into a float
+   132 00000086 B800000000              mov rax, 0
+   133 0000008B 4889E7                  mov rdi, rsp
+   134 0000008E E8(00000000)            call atof ; Stores the float into xmm0
+   135                                  
+   136                                  ; Pop the stack as we are now done with the user-inputted float
+   137 00000093 58                      pop rax
+   138 00000094 58                      pop rax
+   139                                  
+   140                                  ; Insert the user-inputted float into the array [r12] at the counter's [r14] current position
+   141 00000095 F2430F1104F4            movsd [r12 + r14 * 8], xmm0
+   142                                  
+   143                                  ; Increment the counter by one and restart the main loop if everything goes well
+   144 0000009B 49FFC6                  inc r14
+   145 0000009E EB95                    jmp top_of_loop
+   146                                  ; End of the main loop to ask for user input to insert into the array
+   147                                  
+   148                                  ;; Jump here if the array is now full
+   149                                  capacity_full:
+   150                                  
+   151                                  ;; Print out a message telling the user the array is full
+   152 000000A0 B800000000              mov rax, 0
+   153 000000A5 48BF-                   mov rdi, string_format
+   153 000000A7 [8500000000000000] 
+   154 000000AF 48BE-                   mov rsi, capacity_reached_msg
+   154 000000B1 [4C00000000000000] 
+   155 000000B9 E8(00000000)            call printf
+   156                                  
+   157                                  ;; Exit the main loop
+   158 000000BE EB29                    jmp out_of_loop
+   159                                  ;; End of capacity_full to inform user the array is full
+   160                                  
+   161                                  ;; Jump here if scanf failed OR CTRL + D was pressed to end the main loop
+   162                                  scan_ended:
+   163                                  
+   164                                  ;; Pop what is currently on the stack (to avoid segmentation faults) then exit the loop
+   165 000000C0 58                      pop rax
+   166 000000C1 58                      pop rax
+   167 000000C2 EB25                    jmp out_of_loop
+   168                                  ;; End of scan_ended to end the main loop if scanf failed OR CTRL + D was pressed
+   169                                  
+   170                                  ;; Jump here if you scanf did NOT receive a float to inform the user of invalid input and let them try again
+   171                                  try_again:
+   172                                  
+   173                                  ;; Print out a message for the user to try again
+   174 000000C4 B800000000              mov rax, 0
+   175 000000C9 48BF-                   mov rdi, string_format
+   175 000000CB [8500000000000000] 
+   176 000000D3 48BE-                   mov rsi, invalid_input_msg
+   176 000000D5 [0000000000000000] 
+   177 000000DD E8(00000000)            call printf
+   178                                  
+   179                                  ;; Pop the failed input on the stack (to avoid segmentation faults) then jump back to the top of the main loop
+   180 000000E2 58                      pop rax
+   181 000000E3 58                      pop rax
+   182 000000E4 E94CFFFFFF              jmp top_of_loop
+   183                                  ;; End of try_again to inform the user of invalid input and let them try again
+   184                                  
+   185                                  ; Exit the main loop and complete the program
+   186                                  out_of_loop:
+   187                                  
+   188                                  ; Restore the values to non-GPRs/sse registers
+   189 000000E9 B807000000              mov rax, 7
+   190 000000EE BA00000000              mov rdx, 0
+   191 000000F3 0FAE2C25[00000000]      xrstor [backup_storage_area]
+   192                                  
+   193                                  ; Send back the array's size stored in r14
+   194 000000FB 4C89F0                  mov rax, r14
+   195                                  
+   196                                  ; Restore the GPRs
+   197 000000FE 9D                      popf
+   198 000000FF 415F                    pop r15
+   199 00000101 415E                    pop r14
+   200 00000103 415D                    pop r13
+   201 00000105 415C                    pop r12
+   202 00000107 415B                    pop r11
+   203 00000109 415A                    pop r10
+   204 0000010B 4159                    pop r9
+   205 0000010D 4158                    pop r8
+   206 0000010F 5E                      pop rsi
+   207 00000110 5F                      pop rdi
+   208 00000111 5A                      pop rdx
+   209 00000112 59                      pop rcx
+   210 00000113 5B                      pop rbx
+   211 00000114 5D                      pop rbp
+   212 00000115 C3                      ret

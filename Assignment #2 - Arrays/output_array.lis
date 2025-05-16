@@ -1,0 +1,145 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Program name: "Arrays".  The intent of this program is to sort, print, and compute the mean of an array of float numbers   *
+     3                                  ; in which the array was constructed using user input. The educational purpose is to gain experience programming with arrays *                                                              *
+     4                                  ; Copyright (C) 2025  Solivan Hiep                                                                                           *
+     5                                  ; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+     6                                  ; version 3 as published by the Free Software Foundation.                                                                    *
+     7                                  ; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+     8                                  ; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+     9                                  ; A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    10                                  ;****************************************************************************************************************************
+    11                                  
+    12                                  
+    13                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    14                                  
+    15                                  ;Author information
+    16                                  ;  Author name: Solivan Hiep
+    17                                  ;  Author email: hiepsolivan@csu.fullerton.edu
+    18                                  ;  CWID: 8848458756
+    19                                  ;  Class: CPSC 240-03 - Class Nbr 13604
+    20                                  ;
+    21                                  ;Program information
+    22                                  ;  Program name: Arrays
+    23                                  ;  Programming languages: Six modules in X86, one module in C, one module in C++, and one in bash
+    24                                  ;  Date program began: 2025-Feb-09
+    25                                  ;  Date of last update: 2025-Feb-20
+    26                                  ;  Files in the program: manager.asm, input_array.asm, isfloat.asm, output_array.asm, sum.asm, swap.asm, sort.c, main.c, r.sh
+    27                                  ;
+    28                                  ;Purpose
+    29                                  ;  The intent of this program is to sort, print, and compute the mean of an array of float numbers
+    30                                  ;  in which the array was constructed using user input.
+    31                                  ;  The educational purpose is to gain experience programming with arrays.
+    32                                  ;
+    33                                  ;This file
+    34                                  ;  File name: output_array.asm
+    35                                  ;  Language: X86-64
+    36                                  ;  Max page width: 172 columns
+    37                                  ;  Assemble: nasm -f elf64 -l output_array.lis -o output_array.o output_array.asm
+    38                                  ;  Page width: 172 columns
+    39                                  ;  Optimal print specification: Landscape, 7 points, monospace, 8½x11 paper
+    40                                  ;  Prototype of this function: long input_array(double array[], long capacity)
+    41                                  ;
+    42                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    43                                  ;
+    44                                  ;===== Begin code area ====================================================================================================================================================
+    45                                  
+    46                                  ; Declarations
+    47                                  extern printf
+    48                                  
+    49                                  global output_array
+    50                                  
+    51                                  ; Declare initialized arrays
+    52                                  segment .data
+    53 00000000 252E396620202000        outputted_number db "%.9f   ", 0
+    54 00000008 0A00                    ending_new_line db "", 10, 0
+    55                                  
+    56                                  ; Declare uninitialized arrays
+    57                                  segment .bss
+    58                                  
+    59                                  align 64
+    60 00000000 <res 340h>              backup_storage_area resb 832
+    61                                  
+    62                                  segment .text
+    63                                  output_array:
+    64                                  
+    65                                  ; Backup the GPRs
+    66 00000000 55                      push rbp
+    67 00000001 4889E5                  mov rbp, rsp
+    68 00000004 53                      push rbx
+    69 00000005 51                      push rcx
+    70 00000006 52                      push rdx
+    71 00000007 57                      push rdi
+    72 00000008 56                      push rsi
+    73 00000009 4150                    push r8
+    74 0000000B 4151                    push r9
+    75 0000000D 4152                    push r10
+    76 0000000F 4153                    push r11
+    77 00000011 4154                    push r12
+    78 00000013 4155                    push r13
+    79 00000015 4156                    push r14
+    80 00000017 4157                    push r15
+    81 00000019 9C                      pushf
+    82                                  
+    83                                  ; Backup other registers/sse registers
+    84 0000001A B807000000              mov rax, 7
+    85 0000001F BA00000000              mov rdx, 0
+    86 00000024 0FAE2425[00000000]      xsave [backup_storage_area]
+    87                                  
+    88                                  ; Move the arguments received (the address to the array + array size) into non-volatile registers r12 and r13 to affect the actual array + future use in logic
+    89 0000002C 4989FC                  mov r12, rdi ; The array
+    90 0000002F 4989F5                  mov r13, rsi ; The array's size
+    91                                  
+    92                                  ; Maintain a counter for the array using the non-volatile register r14 to ensure no over-indexing
+    93 00000032 4D31F6                  xor r14, r14 ; Comparing r14 to itself via xor sets r14 to 0
+    94                                  
+    95                                  ; Kick off the main loop to print out each element in the array
+    96                                  top_of_loop:
+    97                                  
+    98                                  ; Check for over-indexing by determining if r14 >= r13. If so, exit. Otherwise, continue
+    99 00000035 4D39EE                  cmp r14, r13
+   100 00000038 7D1F                    jge out_of_loop
+   101                                  
+   102                                  ; Print out the element in the array [r12] at the counter [r14]
+   103 0000003A B801000000              mov rax, 1
+   104 0000003F 48BF-                   mov rdi, outputted_number
+   104 00000041 [0000000000000000] 
+   105 00000049 F2430F1004F4            movsd xmm0, [r12 + r14 * 8]
+   106 0000004F E8(00000000)            call printf
+   107                                  
+   108                                  ; Increment the counter [r14] by 1 and jump back to the top of the loop
+   109 00000054 49FFC6                  inc r14
+   110 00000057 EBDC                    jmp top_of_loop
+   111                                  ; End of main loop to print out each element in the array
+   112                                  
+   113                                  ; Exit the main loop and complete the program:
+   114                                  out_of_loop:
+   115                                  
+   116                                  ; Print out a new line for nicer formatting
+   117 00000059 B800000000              mov rax, 0
+   118 0000005E 48BF-                   mov rdi, ending_new_line
+   118 00000060 [0800000000000000] 
+   119 00000068 E8(00000000)            call printf
+   120                                  
+   121                                  ; Restore the values to non-GPRs/sse registers
+   122 0000006D B807000000              mov rax, 7
+   123 00000072 BA00000000              mov rdx, 0
+   124 00000077 0FAE2C25[00000000]      xrstor [backup_storage_area]
+   125                                  
+   126                                  ; Restore the GPRs
+   127 0000007F 9D                      popf
+   128 00000080 415F                    pop r15
+   129 00000082 415E                    pop r14
+   130 00000084 415D                    pop r13
+   131 00000086 415C                    pop r12
+   132 00000088 415B                    pop r11
+   133 0000008A 415A                    pop r10
+   134 0000008C 4159                    pop r9
+   135 0000008E 4158                    pop r8
+   136 00000090 5E                      pop rsi
+   137 00000091 5F                      pop rdi
+   138 00000092 5A                      pop rdx
+   139 00000093 59                      pop rcx
+   140 00000094 5B                      pop rbx
+   141 00000095 5D                      pop rbp   ;Restore rbp to the base of the activation record of the caller program
+   142 00000096 C3                      ret
+   143                                  ;End of the function output_array ====================================================================
