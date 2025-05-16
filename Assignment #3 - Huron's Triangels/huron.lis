@@ -1,0 +1,280 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Program name: "Huron's Triangle".  The intent of this program is to compute the area of any triangle where the lengths of the
+     3                                  ; three sides is known using Huron's formula. The educational purpose is to reinforce my skill of using a few techniques from
+     4                                  ; the past such as data validation and parameter passing and use macros in this program to hopefully understand how to use   *
+     5                                  ; macros in other situations                                                                                                 *
+     6                                  ; Copyright (C) 2025  Solivan Hiep                                                                                           *
+     7                                  ; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+     8                                  ; version 3 as published by the Free Software Foundation.                                                                    *
+     9                                  ; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+    10                                  ; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+    11                                  ; A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    12                                  ;****************************************************************************************************************************
+    13                                  
+    14                                  
+    15                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    16                                  
+    17                                  ;Author information
+    18                                  ;  Author name: Solivan Hiep
+    19                                  ;  Author email: hiepsolivan@csu.fullerton.edu
+    20                                  ;  CWID: 8848458756
+    21                                  ;  Class: CPSC 240-03 - Class Nbr 13604
+    22                                  ;
+    23                                  ;Program information
+    24                                  ;  Program name: Huron's Triangle
+    25                                  ;  Programming languages: Five modules in X86, one module in C++, and one in bash
+    26                                  ;  Date program began: 2025-Feb-24
+    27                                  ;  Date of last update: 2025-Mar-05
+    28                                  ;  Files in the program: manager.asm, istriangle.asm, isfloat.asm, huron.asm, triangle.inc, main.c, r.sh
+    29                                  ;
+    30                                  ;Purpose
+    31                                  ;  The intent of this program is to compute the area of any triangle where the lengths of the
+    32                                  ;  three sides is known using Huron's formula.
+    33                                  ;  The educational purpose is to reinforce my skill of using a few techniques from the past such as data validation
+    34                                  ;  and parameter passing as well as use macros in this program to hopefully understand how to use
+    35                                  ;  macros in other situations
+    36                                  ;
+    37                                  ;This file
+    38                                  ;  File name: huron.asm
+    39                                  ;  Language: X86-64
+    40                                  ;  Development Platform: Windows 11 Enterprise Ver. 24H2. Intel(R) Core(TM) i3-8145U CPU @ 2.10GHz 2.30 GHz Processor. Running on Ubuntu 22.04.5 LTS.
+    41                                  ;  Max page width: 172 columns
+    42                                  ;  Assemble: nasm -f elf64 -l huron.lis -o huron.o huron.asm
+    43                                  ;  Assemble (debug in GDB): nasm -f elf64 -gdwarf -l huron.lis -o huron.o huron.asm
+    44                                  ;  Page width: 172 columns
+    45                                  ;  Optimal print specification: Landscape, 7 points, monospace, 8½x11 paper
+    46                                  ;  Prototype of this function: double huron(double array[])
+    47                                  ;
+    48                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    49                                  ;
+    50                                  ;===== Begin code area ====================================================================================================================================================
+    51                                  
+    52                                  ; Declarations
+    53                                  %include "triangle.inc"
+    54                              <1> ;=====Declarations =======================================================================
+    55                              <1> ;These declarations are global to all the macros in this include file "triangle.inc".
+    56 00000000 546869732070726F67- <1> courtesy_msg db "This program is brought to you as a courtesy of", 10, 0
+    56 00000009 72616D206973206272- <1>
+    56 00000012 6F7567687420746F20- <1>
+    56 0000001B 796F75206173206120- <1>
+    56 00000024 636F75727465737920- <1>
+    56 0000002D 6F660A00            <1>
+    57 00000031 417574686F723A2053- <1> author_msg db "Author: Solivan Hiep", 10, 0
+    57 0000003A 6F6C6976616E204869- <1>
+    57 00000043 65700A00            <1>
+    58 00000047 437769643A20383834- <1> cwid_msg db "Cwid: 884-845-876", 10, 0
+    58 00000050 2D3834352D3837360A- <1>
+    58 00000059 00                  <1>
+    59 0000005A 456D61696C3A206869- <1> email_msg db "Email: hiepsolivan@csu.fullerton.edu", 10, 10, 0
+    59 00000063 6570736F6C6976616E- <1>
+    59 0000006C 406373752E66756C6C- <1>
+    59 00000075 6572746F6E2E656475- <1>
+    59 0000007E 0A0A00              <1>
+    60                              <1> 
+    61                              <1> ; Macro that backs up the GPRs
+    62                              <1> %macro backup_gprs 0
+    63                              <1>   push rbp
+    64                              <1>   mov rbp, rsp
+    65                              <1>   push rbx
+    66                              <1>   push rcx
+    67                              <1>   push rdx
+    68                              <1>   push rdi
+    69                              <1>   push rsi
+    70                              <1>   push r8
+    71                              <1>   push r9
+    72                              <1>   push r10
+    73                              <1>   push r11
+    74                              <1>   push r12
+    75                              <1>   push r13
+    76                              <1>   push r14
+    77                              <1>   push r15
+    78                              <1>   pushf
+    79                              <1> %endmacro
+    80                              <1> 
+    81                              <1> ; Macro that restores the GPRs
+    82                              <1> %macro restore_gprs 0
+    83                              <1>   popf
+    84                              <1>   pop r15
+    85                              <1>   pop r14
+    86                              <1>   pop r13
+    87                              <1>   pop r12
+    88                              <1>   pop r11
+    89                              <1>   pop r10
+    90                              <1>   pop r9
+    91                              <1>   pop r8
+    92                              <1>   pop rsi
+    93                              <1>   pop rdi
+    94                              <1>   pop rdx
+    95                              <1>   pop rcx
+    96                              <1>   pop rbx
+    97                              <1>   pop rbp
+    98                              <1> %endmacro
+    99                              <1> 
+   100                              <1> ; Macro that back ups non-GPRs/SSEs to an array stored in parameter %1
+   101                              <1> %macro backup_non_gprs 1
+   102                              <1>   mov rax, 7
+   103                              <1>   mov rdx, 0
+   104                              <1>   xsave [%1]
+   105                              <1> %endmacro
+   106                              <1> 
+   107                              <1> ; Macro that restores the non-GPRs/SSEs in storage array of parameter %1
+   108                              <1> %macro restore_non_gprs 1
+   109                              <1>   mov rax, 7
+   110                              <1>   mov rdx, 0
+   111                              <1>   xrstor [%1]
+   112                              <1> %endmacro
+   113                              <1> 
+   114                              <1> ; Macro that introduces who the program is courtesy of
+   115                              <1> %macro display_info 0
+   116                              <1>   mov rax, 0
+   117                              <1>   mov rdi, string_format ; This string format was already declared in manager.asm, so we don't need to redefine it
+   118                              <1>   mov rsi, courtesy_msg
+   119                              <1>   call printf
+   120                              <1> %endmacro
+   121                              <1> 
+   122                              <1> ; Macro that prints out the author's name
+   123                              <1> %macro display_author_name 0
+   124                              <1>   mov rax, 0
+   125                              <1>   mov rdi, string_format
+   126                              <1>   mov rsi, author_msg
+   127                              <1>   call printf
+   128                              <1> %endmacro
+   129                              <1> 
+   130                              <1> ; Macro that prints out the author's CWID
+   131                              <1> %macro display_cwid 0
+   132                              <1>   mov rax, 0
+   133                              <1>   mov rdi, string_format
+   134                              <1>   mov rsi, cwid_msg
+   135                              <1>   call printf
+   136                              <1> %endmacro
+   137                              <1> 
+   138                              <1> ; Macro that prints out the author's email
+   139                              <1> %macro display_email 0
+   140                              <1>   mov rax, 0
+   141                              <1>   mov rdi, string_format
+   142                              <1>   mov rsi, email_msg
+   143                              <1>   call printf
+   144                              <1> %endmacro
+   145                              <1> 
+   146                              <1> ; Macro that checks if the sum of the first two sides is greater than the third
+   147                              <1> %macro check_two_sides_greater 4
+   148                              <1>   ; %1 = the array of sides
+   149                              <1>   ; %2 = index of first side [from 0]
+   150                              <1>   ; %3 = index of second side
+   151                              <1>   ; %4 = index of third side
+   152                              <1>   mov r12, %1
+   153                              <1>   mov r13, %2
+   154                              <1>   mov r14, %3
+   155                              <1>   mov r15, %4
+   156                              <1>   movsd xmm1, qword[r12 + r13 * 8]
+   157                              <1>   movsd xmm2, qword[r12 + r14 * 8]
+   158                              <1>   addsd xmm1, xmm2
+   159                              <1>   movsd xmm3, qword[r12 + r15 * 8]
+   160                              <1>   ucomisd xmm1, xmm3 ; Unordered Compare Scalar Double Precision Floating-Point Values (i.e comparing SSEs)
+   161                              <1> %endmacro
+    54                                  extern sqrt
+    55                                  global huron
+    56                                  
+    57                                  ; Declare initialized arrays
+    58                                  segment .data
+    59 00000000 000000000000E03F        half dq 0.5
+    60                                  
+    61                                  ; Declare uninitialized arrays
+    62                                  segment .bss
+    63                                  align 64
+    64 00000000 <res 340h>              backup_storage_area resb 832
+    65                                  
+    66                                  segment .text
+    67                                  huron:
+    68                                  ; Call the macro to back up the GPRs
+    69                                  backup_gprs
+    63 00000081 55                  <1>  push rbp
+    64 00000082 4889E5              <1>  mov rbp, rsp
+    65 00000085 53                  <1>  push rbx
+    66 00000086 51                  <1>  push rcx
+    67 00000087 52                  <1>  push rdx
+    68 00000088 57                  <1>  push rdi
+    69 00000089 56                  <1>  push rsi
+    70 0000008A 4150                <1>  push r8
+    71 0000008C 4151                <1>  push r9
+    72 0000008E 4152                <1>  push r10
+    73 00000090 4153                <1>  push r11
+    74 00000092 4154                <1>  push r12
+    75 00000094 4155                <1>  push r13
+    76 00000096 4156                <1>  push r14
+    77 00000098 4157                <1>  push r15
+    78 0000009A 9C                  <1>  pushf
+    70                                  
+    71                                  ; Call the macro to back up the non-GPRs/SSEs into backup_storage_area
+    72                                  backup_non_gprs backup_storage_area
+   102 0000009B B807000000          <1>  mov rax, 7
+   103 000000A0 BA00000000          <1>  mov rdx, 0
+   104 000000A5 0FAE2425[00000000]  <1>  xsave [%1]
+    73                                  
+    74                                  ; Move the argument received (the array) into the non-volatile registers r12 for use in calculations
+    75 000000AD 4989FC                  mov r12, rdi
+    76                                  
+    77                                  ; Move all the sides in the array into non-volatile registers xmm8, xmm9, and xmm10 for use in calculations
+    78 000000B0 F2450F100424            movsd xmm8, qword[r12 + 0 * 8] ; Corresponds to side 1 or 'a'
+    79 000000B6 F2450F104C2408          movsd xmm9, qword[r12 + 1 * 8] ; Corresponds to side 2 or 'b'
+    80 000000BD F2450F10542410          movsd xmm10, qword[r12 + 2 * 8] ; Corresponds to side 3 or 'c'
+    81                                  
+    82                                  ; Calculate the semi-perimeter 's' (0.5 * (a + b + c)) and store it into the non-volatile xmm11
+    83 000000C4 F2450F10D8              movsd xmm11, xmm8
+    84 000000C9 F2450F58D9              addsd xmm11, xmm9
+    85 000000CE F2450F58DA              addsd xmm11, xmm10
+    86 000000D3 F2440F591C25-           mulsd xmm11, [half]
+    86 000000D9 [00000000]         
+    87                                  
+    88                                  ; Calculate the product inside the root, s(s-a)(s-b)(s-c), and store it into the non-volatile xmm12
+    89 000000DD F2450F10E3              movsd xmm12, xmm11
+    90                                  
+    91 000000E2 F2410F10CB              movsd xmm1, xmm11
+    92 000000E7 F2410F5CC8              subsd xmm1, xmm8
+    93 000000EC F2440F59E1              mulsd xmm12, xmm1
+    94                                  
+    95 000000F1 F2410F10D3              movsd xmm2, xmm11
+    96 000000F6 F2410F5CD1              subsd xmm2, xmm9
+    97 000000FB F2440F59E2              mulsd xmm12, xmm2
+    98                                  
+    99 00000100 F2410F10DB              movsd xmm3, xmm11
+   100 00000105 F2410F5CDA              subsd xmm3, xmm10
+   101 0000010A F2440F59E3              mulsd xmm12, xmm3
+   102                                  
+   103                                  ; Find the square root of s(s-a)(s-b)(s-c) and store it in non-volatile xmm13
+   104 0000010F F2450F51EC              sqrtsd xmm13, xmm12
+   105                                  
+   106                                  ; Move the results of Huron's formula to the stack
+   107 00000114 B800000000              mov rax, 0
+   108 00000119 6A00                    push qword 0
+   109 0000011B F2440F112C24            movsd [rsp], xmm13
+   110                                  
+   111                                  ; Call the macro to restore the non-GPRs/SSEs from backup_storage_area
+   112                                  restore_non_gprs backup_storage_area
+   109 00000121 B807000000          <1>  mov rax, 7
+   110 00000126 BA00000000          <1>  mov rdx, 0
+   111 0000012B 0FAE2C25[00000000]  <1>  xrstor [%1]
+   113                                  
+   114                                  ; Send back the results of Huron's formula
+   115 00000133 F20F100424              movsd xmm0, [rsp]
+   116 00000138 58                      pop rax
+   117                                  
+   118                                  ; Call the macro to restore the GPRs
+   119                                  restore_gprs
+    83 00000139 9D                  <1>  popf
+    84 0000013A 415F                <1>  pop r15
+    85 0000013C 415E                <1>  pop r14
+    86 0000013E 415D                <1>  pop r13
+    87 00000140 415C                <1>  pop r12
+    88 00000142 415B                <1>  pop r11
+    89 00000144 415A                <1>  pop r10
+    90 00000146 4159                <1>  pop r9
+    91 00000148 4158                <1>  pop r8
+    92 0000014A 5E                  <1>  pop rsi
+    93 0000014B 5F                  <1>  pop rdi
+    94 0000014C 5A                  <1>  pop rdx
+    95 0000014D 59                  <1>  pop rcx
+    96 0000014E 5B                  <1>  pop rbx
+    97 0000014F 5D                  <1>  pop rbp
+   120                                  
+   121 00000150 C3                      ret

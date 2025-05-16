@@ -1,0 +1,212 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Program name: "Non-deterministic random numbers".  The intent of this program is to generate up to 100 random number using *
+     3                                  ; the non-deterministic random number generator found inside of modern X86 microprocessors.                                  *
+     4                                  ; Copyright (C) 2025  Solivan Hiep                                                                                           *
+     5                                  ; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+     6                                  ; version 3 as published by the Free Software Foundation.                                                                    *
+     7                                  ; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+     8                                  ; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+     9                                  ; A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    10                                  ;****************************************************************************************************************************
+    11                                  
+    12                                  
+    13                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    14                                  
+    15                                  ;Author information
+    16                                  ;  Author name: Solivan Hiep
+    17                                  ;  Author email: hiepsolivan@csu.fullerton.edu
+    18                                  ;  CWID: 8848458756
+    19                                  ;  Class: CPSC 240-03 - Class Nbr 13604
+    20                                  ;
+    21                                  ;Program information
+    22                                  ;  Program name: Non-deterministic Random Numbers
+    23                                  ;  Programming languages: Five modules in X86, two modules in C++, and one in bash
+    24                                  ;  Date program began: 2025-Mar-24
+    25                                  ;  Date of last update: 2025-Mar-27
+    26                                  ;  Files in the program: executive.asm, fill_random_array.asm, isnan.asm, normalize.asm, show_array.asm, main.cpp, sort.cpp, r.sh
+    27                                  ;
+    28                                  ;Purpose
+    29                                  ;  The intent of this program is to generate up to 100 random number using
+    30                                  ;  the non-deterministic random number generator found inside of modern X86 microprocessors.
+    31                                  ;
+    32                                  ;This file
+    33                                  ;  File name: normalize_array.asm
+    34                                  ;  Language: X86-64
+    35                                  ;  Development Platform: Windows 11 Enterprise Ver. 24H2. Intel(R) Core(TM) i3-8145U CPU @ 2.10GHz 2.30 GHz Processor. Running on Ubuntu 22.04.5 LTS.
+    36                                  ;  Max page width: 172 columns
+    37                                  ;  Assemble: nasm -f elf64 -l normalize_array.lis -o normalize_array.o normalize_array.asm
+    38                                  ;  Assemble (debug in GDB): nasm -f elf64 -gdwarf -l normalize_array.lis -o normalize_array.o normalize_array.asm
+    39                                  ;  Page width: 172 columns
+    40                                  ;  Optimal print specification: Landscape, 7 points, monospace, 8½x11 paper
+    41                                  ;  Prototype of this function: void normalize_array(double array [], int size)
+    42                                  ;
+    43                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    44                                  ;
+    45                                  ;===== Begin code area ====================================================================================================================================================
+    46                                  
+    47                                  ; Declarations
+    48                                  %include "utilities.inc"
+    49                              <1> ; Macro that backs up the GPRs
+    50                              <1> %macro backup_gprs 0
+    51                              <1>   push rbp
+    52                              <1>   mov rbp, rsp
+    53                              <1>   push rbx
+    54                              <1>   push rcx
+    55                              <1>   push rdx
+    56                              <1>   push rdi
+    57                              <1>   push rsi
+    58                              <1>   push r8
+    59                              <1>   push r9
+    60                              <1>   push r10
+    61                              <1>   push r11
+    62                              <1>   push r12
+    63                              <1>   push r13
+    64                              <1>   push r14
+    65                              <1>   push r15
+    66                              <1>   pushf
+    67                              <1> %endmacro
+    68                              <1> 
+    69                              <1> ; Macro that restores the GPRs
+    70                              <1> %macro restore_gprs 0
+    71                              <1>   popf
+    72                              <1>   pop r15
+    73                              <1>   pop r14
+    74                              <1>   pop r13
+    75                              <1>   pop r12
+    76                              <1>   pop r11
+    77                              <1>   pop r10
+    78                              <1>   pop r9
+    79                              <1>   pop r8
+    80                              <1>   pop rsi
+    81                              <1>   pop rdi
+    82                              <1>   pop rdx
+    83                              <1>   pop rcx
+    84                              <1>   pop rbx
+    85                              <1>   pop rbp
+    86                              <1> %endmacro
+    87                              <1> 
+    88                              <1> ; Macro that back ups non-GPRs/SSEs to an array stored in parameter %1
+    89                              <1> %macro backup_non_gprs 1
+    90                              <1>   mov rax, 7
+    91                              <1>   mov rdx, 0
+    92                              <1>   xsave [%1]
+    93                              <1> %endmacro
+    94                              <1> 
+    95                              <1> ; Macro that restores the non-GPRs/SSEs in storage array of parameter %1
+    96                              <1> %macro restore_non_gprs 1
+    97                              <1>   mov rax, 7
+    98                              <1>   mov rdx, 0
+    99                              <1>   xrstor [%1]
+   100                              <1> %endmacro
+   101                              <1> 
+   102                              <1> ; Macro that removes the new line from a string input in parameter %1
+   103                              <1> %macro remove_new_line 1
+   104                              <1>   mov r12, %1
+   105                              <1>   mov rax, 0
+   106                              <1>   mov rdi, r12
+   107                              <1>   call strlen
+   108                              <1>   mov [r12 + rax - 1], byte 0
+   109                              <1> %endmacro
+    49                                  global normalize_array
+    50                                  
+    51                                  ; Declare initialized arrays
+    52                                  segment .data
+    53                                  
+    54                                  ; Declare uninitialized arrays
+    55                                  segment .bss
+    56                                  align 64
+    57 00000000 <res 340h>              backup_storage_area resb 832
+    58                                  
+    59                                  segment .text
+    60                                  normalize_array:
+    61                                  
+    62                                  ; Call the macro to back up the GPRs
+    63                                  backup_gprs
+    51 00000000 55                  <1>  push rbp
+    52 00000001 4889E5              <1>  mov rbp, rsp
+    53 00000004 53                  <1>  push rbx
+    54 00000005 51                  <1>  push rcx
+    55 00000006 52                  <1>  push rdx
+    56 00000007 57                  <1>  push rdi
+    57 00000008 56                  <1>  push rsi
+    58 00000009 4150                <1>  push r8
+    59 0000000B 4151                <1>  push r9
+    60 0000000D 4152                <1>  push r10
+    61 0000000F 4153                <1>  push r11
+    62 00000011 4154                <1>  push r12
+    63 00000013 4155                <1>  push r13
+    64 00000015 4156                <1>  push r14
+    65 00000017 4157                <1>  push r15
+    66 00000019 9C                  <1>  pushf
+    64                                  
+    65                                  ; Call the macro to back up the non-GPRs + SSEs into backup_storage_area
+    66                                  backup_non_gprs backup_storage_area
+    90 0000001A B807000000          <1>  mov rax, 7
+    91 0000001F BA00000000          <1>  mov rdx, 0
+    92 00000024 0FAE2425[00000000]  <1>  xsave [%1]
+    67                                  
+    68                                  ; Move the arguments holding the array and its size into the non-volatile GPRs r12 and r13 respectively
+    69 0000002C 4989FC                  mov r12, rdi
+    70 0000002F 4989F5                  mov r13, rsi
+    71                                  
+    72                                  ; Maintain a counter to prevent over indexing
+    73 00000032 4D31F6                  xor r14, r14
+    74                                  
+    75                                  ; Start the main loop of normalizing each item in the array
+    76                                  normalizing:
+    77                                  
+    78                                  ; Check for over indexing by checking id r14 >= r13. If so, exit. Otherwise continue
+    79 00000035 4D39EE                  cmp r14, r13
+    80 00000038 7D2E                    jge end_of_loop
+    81                                  
+    82                                  ; To normalize a number to between 1.0 and 2.0, start by clearing the first 12 bits
+    83 0000003A 4F8B3CF4                mov r15, [r12 + r14 * 8]
+    84 0000003E 49C1E70C                shl r15, 12
+    85 00000042 49C1EF0C                shr r15, 12
+    86                                  
+    87                                  ; Ensure that the first 12 bits are 3FF by turning on required bits using the mask 0x3FF0000000000000
+    88 00000046 48B8000000000000F0-     mov rax, 0x3FF0000000000000
+    88 0000004F 3F                 
+    89 00000050 4909C7                  or r15, rax
+    90                                  
+    91                                  ; Push the normalized number onto the stack so an SSE register can take it
+    92 00000053 4157                    push r15
+    93 00000055 F2440F101424            movsd xmm10, [rsp]
+    94 0000005B 415F                    pop r15
+    95                                  
+    96                                  ; Move the normalized number back into the array
+    97 0000005D F2470F1114F4            movsd [r12 + r14 * 8], xmm10
+    98                                  
+    99                                  ; Increment and jump to the top of the loop
+   100 00000063 49FFC6                  inc r14
+   101 00000066 EBCD                    jmp normalizing
+   102                                  ; End of normalizing to normalize each item in the array
+   103                                  
+   104                                  ; Exit the main loop
+   105                                  end_of_loop:
+   106                                  
+   107                                  ; Call the macro to restore the non-GPRs + SSEs in backup_storage_area
+   108                                  restore_non_gprs backup_storage_area
+    97 00000068 B807000000          <1>  mov rax, 7
+    98 0000006D BA00000000          <1>  mov rdx, 0
+    99 00000072 0FAE2C25[00000000]  <1>  xrstor [%1]
+   109                                  
+   110                                  ; Call the macro to restore the GPRs
+   111                                  restore_gprs
+    71 0000007A 9D                  <1>  popf
+    72 0000007B 415F                <1>  pop r15
+    73 0000007D 415E                <1>  pop r14
+    74 0000007F 415D                <1>  pop r13
+    75 00000081 415C                <1>  pop r12
+    76 00000083 415B                <1>  pop r11
+    77 00000085 415A                <1>  pop r10
+    78 00000087 4159                <1>  pop r9
+    79 00000089 4158                <1>  pop r8
+    80 0000008B 5E                  <1>  pop rsi
+    81 0000008C 5F                  <1>  pop rdi
+    82 0000008D 5A                  <1>  pop rdx
+    83 0000008E 59                  <1>  pop rcx
+    84 0000008F 5B                  <1>  pop rbx
+    85 00000090 5D                  <1>  pop rbp
+   112                                  
+   113 00000091 C3                      ret

@@ -1,0 +1,539 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Program name: "Huron's Triangle".  The intent of this program is to compute the area of any triangle where the lengths of the
+     3                                  ; three sides is known using Huron's formula. The educational purpose is to reinforce my skill of using a few techniques from
+     4                                  ; the past such as data validation and parameter passing and use macros in this program to hopefully understand how to use   *
+     5                                  ; macros in other situations                                                                                                 *
+     6                                  ; Copyright (C) 2025  Solivan Hiep                                                                                           *
+     7                                  ; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+     8                                  ; version 3 as published by the Free Software Foundation.                                                                    *
+     9                                  ; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+    10                                  ; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+    11                                  ; A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    12                                  ;****************************************************************************************************************************
+    13                                  
+    14                                  
+    15                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    16                                  
+    17                                  ;Author information
+    18                                  ;  Author name: Solivan Hiep
+    19                                  ;  Author email: hiepsolivan@csu.fullerton.edu
+    20                                  ;  CWID: 8848458756
+    21                                  ;  Class: CPSC 240-03 - Class Nbr 13604
+    22                                  ;
+    23                                  ;Program information
+    24                                  ;  Program name: Huron's Triangle
+    25                                  ;  Programming languages: Five modules in X86, one module in C++, and one in bash
+    26                                  ;  Date program began: 2025-Feb-24
+    27                                  ;  Date of last update: 2025-Mar-05
+    28                                  ;  Files in the program: manager.asm, isfloat.asm, istriangle.asm, huron.asm, triangle.inc, main.c, r.sh
+    29                                  ;
+    30                                  ;Purpose
+    31                                  ;  The intent of this program is to compute the area of any triangle where the lengths of the
+    32                                  ;  three sides is known using Huron's formula.
+    33                                  ;  The educational purpose is to reinforce my skill of using a few techniques from the past such as data validation
+    34                                  ;  and parameter passing as well as use macros in this program to hopefully understand how to use
+    35                                  ;  macros in other situations
+    36                                  ;
+    37                                  ;This file
+    38                                  ;  File name: manager.asm
+    39                                  ;  Language: X86-64
+    40                                  ;  Development Platform: Windows 11 Enterprise Ver. 24H2. Intel(R) Core(TM) i3-8145U CPU @ 2.10GHz 2.30 GHz Processor. Running on Ubuntu 22.04.5 LTS.
+    41                                  ;  Max page width: 172 columns
+    42                                  ;  Assemble: nasm -f elf64 -l manager.lis -o manager.o manager.asm
+    43                                  ;  Assemble (debug in GDB): nasm -f elf64 -gdwarf -l manager.lis -o manager.o manager.asm
+    44                                  ;  Page width: 172 columns
+    45                                  ;  Optimal print specification: Landscape, 7 points, monospace, 8½x11 paper
+    46                                  ;  Prototype of this function: double manager()
+    47                                  ;
+    48                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    49                                  ;
+    50                                  ;===== Begin code area ====================================================================================================================================================
+    51                                  
+    52                                  ; Declarations
+    53                                  %include "triangle.inc"
+    54                              <1> ;=====Declarations =======================================================================
+    55                              <1> ;These declarations are global to all the macros in this include file "triangle.inc".
+    56 00000000 546869732070726F67- <1> courtesy_msg db "This program is brought to you as a courtesy of", 10, 0
+    56 00000009 72616D206973206272- <1>
+    56 00000012 6F7567687420746F20- <1>
+    56 0000001B 796F75206173206120- <1>
+    56 00000024 636F75727465737920- <1>
+    56 0000002D 6F660A00            <1>
+    57 00000031 417574686F723A2053- <1> author_msg db "Author: Solivan Hiep", 10, 0
+    57 0000003A 6F6C6976616E204869- <1>
+    57 00000043 65700A00            <1>
+    58 00000047 437769643A20383834- <1> cwid_msg db "Cwid: 884-845-876", 10, 0
+    58 00000050 2D3834352D3837360A- <1>
+    58 00000059 00                  <1>
+    59 0000005A 456D61696C3A206869- <1> email_msg db "Email: hiepsolivan@csu.fullerton.edu", 10, 10, 0
+    59 00000063 6570736F6C6976616E- <1>
+    59 0000006C 406373752E66756C6C- <1>
+    59 00000075 6572746F6E2E656475- <1>
+    59 0000007E 0A0A00              <1>
+    60                              <1> 
+    61                              <1> ; Macro that backs up the GPRs
+    62                              <1> %macro backup_gprs 0
+    63                              <1>   push rbp
+    64                              <1>   mov rbp, rsp
+    65                              <1>   push rbx
+    66                              <1>   push rcx
+    67                              <1>   push rdx
+    68                              <1>   push rdi
+    69                              <1>   push rsi
+    70                              <1>   push r8
+    71                              <1>   push r9
+    72                              <1>   push r10
+    73                              <1>   push r11
+    74                              <1>   push r12
+    75                              <1>   push r13
+    76                              <1>   push r14
+    77                              <1>   push r15
+    78                              <1>   pushf
+    79                              <1> %endmacro
+    80                              <1> 
+    81                              <1> ; Macro that restores the GPRs
+    82                              <1> %macro restore_gprs 0
+    83                              <1>   popf
+    84                              <1>   pop r15
+    85                              <1>   pop r14
+    86                              <1>   pop r13
+    87                              <1>   pop r12
+    88                              <1>   pop r11
+    89                              <1>   pop r10
+    90                              <1>   pop r9
+    91                              <1>   pop r8
+    92                              <1>   pop rsi
+    93                              <1>   pop rdi
+    94                              <1>   pop rdx
+    95                              <1>   pop rcx
+    96                              <1>   pop rbx
+    97                              <1>   pop rbp
+    98                              <1> %endmacro
+    99                              <1> 
+   100                              <1> ; Macro that back ups non-GPRs/SSEs to an array stored in parameter %1
+   101                              <1> %macro backup_non_gprs 1
+   102                              <1>   mov rax, 7
+   103                              <1>   mov rdx, 0
+   104                              <1>   xsave [%1]
+   105                              <1> %endmacro
+   106                              <1> 
+   107                              <1> ; Macro that restores the non-GPRs/SSEs in storage array of parameter %1
+   108                              <1> %macro restore_non_gprs 1
+   109                              <1>   mov rax, 7
+   110                              <1>   mov rdx, 0
+   111                              <1>   xrstor [%1]
+   112                              <1> %endmacro
+   113                              <1> 
+   114                              <1> ; Macro that introduces who the program is courtesy of
+   115                              <1> %macro display_info 0
+   116                              <1>   mov rax, 0
+   117                              <1>   mov rdi, string_format ; This string format was already declared in manager.asm, so we don't need to redefine it
+   118                              <1>   mov rsi, courtesy_msg
+   119                              <1>   call printf
+   120                              <1> %endmacro
+   121                              <1> 
+   122                              <1> ; Macro that prints out the author's name
+   123                              <1> %macro display_author_name 0
+   124                              <1>   mov rax, 0
+   125                              <1>   mov rdi, string_format
+   126                              <1>   mov rsi, author_msg
+   127                              <1>   call printf
+   128                              <1> %endmacro
+   129                              <1> 
+   130                              <1> ; Macro that prints out the author's CWID
+   131                              <1> %macro display_cwid 0
+   132                              <1>   mov rax, 0
+   133                              <1>   mov rdi, string_format
+   134                              <1>   mov rsi, cwid_msg
+   135                              <1>   call printf
+   136                              <1> %endmacro
+   137                              <1> 
+   138                              <1> ; Macro that prints out the author's email
+   139                              <1> %macro display_email 0
+   140                              <1>   mov rax, 0
+   141                              <1>   mov rdi, string_format
+   142                              <1>   mov rsi, email_msg
+   143                              <1>   call printf
+   144                              <1> %endmacro
+   145                              <1> 
+   146                              <1> ; Macro that checks if the sum of the first two sides is greater than the third
+   147                              <1> %macro check_two_sides_greater 4
+   148                              <1>   ; %1 = the array of sides
+   149                              <1>   ; %2 = index of first side [from 0]
+   150                              <1>   ; %3 = index of second side
+   151                              <1>   ; %4 = index of third side
+   152                              <1>   mov r12, %1
+   153                              <1>   mov r13, %2
+   154                              <1>   mov r14, %3
+   155                              <1>   mov r15, %4
+   156                              <1>   movsd xmm1, qword[r12 + r13 * 8]
+   157                              <1>   movsd xmm2, qword[r12 + r14 * 8]
+   158                              <1>   addsd xmm1, xmm2
+   159                              <1>   movsd xmm3, qword[r12 + r15 * 8]
+   160                              <1>   ucomisd xmm1, xmm3 ; Unordered Compare Scalar Double Precision Floating-Point Values (i.e comparing SSEs)
+   161                              <1> %endmacro
+    54                                  
+    55                                  extern atof
+    56                                  extern printf
+    57                                  extern scanf
+    58                                  
+    59                                  extern isfloat
+    60                                  extern istriangle
+    61                                  extern huron
+    62                                  global manager
+    63                                  
+    64                                  ; Declare initialized arrays
+    65                                  segment .data
+    66 00000000 506C6561736520656E-     three_sides_prompt db "Please enter the lengths of three sides of a triangle [Enter CTRL + D when finished]:", 10, 0
+    66 00000009 74657220746865206C-
+    66 00000012 656E67746873206F66-
+    66 0000001B 207468726565207369-
+    66 00000024 646573206F66206120-
+    66 0000002D 747269616E676C6520-
+    66 00000036 5B456E746572204354-
+    66 0000003F 524C202B2044207768-
+    66 00000048 656E2066696E697368-
+    66 00000051 65645D3A0A00       
+    67 00000057 5468616E6B20796F75-     thank_you_msg db "Thank you.", 10, 10, 0
+    67 00000060 2E0A0A00           
+    68 00000064 546865736520696E70-     valid_triangle_msg db "These inputs have been tested and they are sides of a valid triangle.", 10, 10, 0
+    68 0000006D 757473206861766520-
+    68 00000076 6265656E2074657374-
+    68 0000007F 656420616E64207468-
+    68 00000088 657920617265207369-
+    68 00000091 646573206F66206120-
+    68 0000009A 76616C696420747269-
+    68 000000A3 616E676C652E0A0A00 
+    69 000000AC 546865736520696E70-     invalid_triangle_msg db "These inputs have been tested and they are not the sides of a valid triangle.", 10, 10, 0
+    69 000000B5 757473206861766520-
+    69 000000BE 6265656E2074657374-
+    69 000000C7 656420616E64207468-
+    69 000000D0 657920617265206E6F-
+    69 000000D9 742074686520736964-
+    69 000000E2 6573206F6620612076-
+    69 000000EB 616C69642074726961-
+    69 000000F4 6E676C652E0A0A00   
+    70 000000FC 546865204875726F6E-     huron_app_msg db "The Huron formula will be applied to find the area.", 10, 10, 0
+    70 00000105 20666F726D756C6120-
+    70 0000010E 77696C6C2062652061-
+    70 00000117 70706C69656420746F-
+    70 00000120 2066696E6420746865-
+    70 00000129 20617265612E0A0A00 
+    71 00000132 546865206172656120-     huron_results_msg db "The area is %.6lf sq units. This number will be returned to the caller module.", 10, 10, 0
+    71 0000013B 697320252E366C6620-
+    71 00000144 737120756E6974732E-
+    71 0000014D 2054686973206E756D-
+    71 00000156 6265722077696C6C20-
+    71 0000015F 62652072657475726E-
+    71 00000168 656420746F20746865-
+    71 00000171 2063616C6C6572206D-
+    71 0000017A 6F64756C652E0A0A00 
+    72 00000183 4572726F7220696E70-     error_input_msg db "Error input try again", 10, 0
+    72 0000018C 757420747279206167-
+    72 00000195 61696E0A00         
+    73 0000019A 596F75206D61792072-     run_again_msg db "You may run this program again with valid triangle numbers", 10, 10, 0
+    73 000001A3 756E20746869732070-
+    73 000001AC 726F6772616D206167-
+    73 000001B5 61696E207769746820-
+    73 000001BE 76616C696420747269-
+    73 000001C7 616E676C65206E756D-
+    73 000001D0 626572730A0A00     
+    74 000001D7 257300                  string_format db "%s", 0
+    75 000001DA 256C6600                float_format db "%lf", 0
+    76 000001DE 000000000000F0BF        fail dq -1.0
+    77                                  
+    78 000001E6 25000000000000005D-     games dq 37,93,107,60,110,87,79
+    78 000001EF 000000000000006B00-
+    78 000001F8 0000000000003C0000-
+    78 00000201 00000000006E000000-
+    78 0000020A 000000005700000000-
+    78 00000213 0000004F0000000000-
+    78 0000021C 0000               
+    79                                  
+    80                                  ; Declare uninitialized arrays
+    81                                  segment .bss
+    82 00000000 <res 180h>              sides resq 48 ; Optimally, only 3 should be inputted but allow for backup space on the queue
+    83                                  
+    84                                  align 64
+    85 00000180 <res 340h>              backup_storage_area resb 832
+    86                                  
+    87                                  segment .text
+    88                                  manager:
+    89                                  
+    90                                  ; Call the macro to back-up the GPRs
+    91                                  backup_gprs
+    63 00000081 55                  <1>  push rbp
+    64 00000082 4889E5              <1>  mov rbp, rsp
+    65 00000085 53                  <1>  push rbx
+    66 00000086 51                  <1>  push rcx
+    67 00000087 52                  <1>  push rdx
+    68 00000088 57                  <1>  push rdi
+    69 00000089 56                  <1>  push rsi
+    70 0000008A 4150                <1>  push r8
+    71 0000008C 4151                <1>  push r9
+    72 0000008E 4152                <1>  push r10
+    73 00000090 4153                <1>  push r11
+    74 00000092 4154                <1>  push r12
+    75 00000094 4155                <1>  push r13
+    76 00000096 4156                <1>  push r14
+    77 00000098 4157                <1>  push r15
+    78 0000009A 9C                  <1>  pushf
+    92                                  
+    93                                  ; Call the macro to back-up the non-GPRs + SSEs into backup_storage_area
+    94                                  backup_non_gprs backup_storage_area
+   102 0000009B B807000000          <1>  mov rax, 7
+   103 000000A0 BA00000000          <1>  mov rdx, 0
+   104 000000A5 0FAE2425[80010000]  <1>  xsave [%1]
+    95                                  
+    96                                  ; Call the macros to display who the program is courtesy of and their information [name, CWID, and e-mail]
+    97                                  display_info
+   116 000000AD B800000000          <1>  mov rax, 0
+   117 000000B2 48BF-               <1>  mov rdi, string_format
+   117 000000B4 [D701000000000000]  <1>
+   118 000000BC 48BE-               <1>  mov rsi, courtesy_msg
+   118 000000BE [0000000000000000]  <1>
+   119 000000C6 E8(00000000)        <1>  call printf
+    98                                  display_author_name
+   124 000000CB B800000000          <1>  mov rax, 0
+   125 000000D0 48BF-               <1>  mov rdi, string_format
+   125 000000D2 [D701000000000000]  <1>
+   126 000000DA 48BE-               <1>  mov rsi, author_msg
+   126 000000DC [3100000000000000]  <1>
+   127 000000E4 E8(00000000)        <1>  call printf
+    99                                  display_cwid
+   132 000000E9 B800000000          <1>  mov rax, 0
+   133 000000EE 48BF-               <1>  mov rdi, string_format
+   133 000000F0 [D701000000000000]  <1>
+   134 000000F8 48BE-               <1>  mov rsi, cwid_msg
+   134 000000FA [4700000000000000]  <1>
+   135 00000102 E8(00000000)        <1>  call printf
+   100                                  display_email
+   140 00000107 B800000000          <1>  mov rax, 0
+   141 0000010C 48BF-               <1>  mov rdi, string_format
+   141 0000010E [D701000000000000]  <1>
+   142 00000116 48BE-               <1>  mov rsi, email_msg
+   142 00000118 [5A00000000000000]  <1>
+   143 00000120 E8(00000000)        <1>  call printf
+   101                                  
+   102                                  ; Print out message instructing user to enter the length of the three sides of the triangle
+   103 00000125 B800000000              mov rax, 0
+   104 0000012A 48BF-                   mov rdi, string_format
+   104 0000012C [D701000000000000] 
+   105 00000134 48BE-                   mov rsi, three_sides_prompt
+   105 00000136 [0000000000000000] 
+   106 0000013E E8(00000000)            call printf
+   107                                  
+   108                                  ; Maintain a counter using the non-volatile register r14 to ensure no over-indexing. This counter also doubles as the size of the array.
+   109 00000143 4D31F6                  xor r14, r14 ; Comparing r14 to itself via xor sets r14 to 0
+   110                                  
+   111                                  ; Start the loop to input (preferably 3) sides of the triangle
+   112                                  inputting_sides:
+   113                                  
+   114                                  ; Check for over indexing by checking if r14 >= 48 [Maximum size of the array]. If so, exit and continue program. Otherwise, continue looping.
+   115 00000146 4983FE30                cmp r14, 48
+   116 0000014A 7D72                    jge continue_program
+   117                                  
+   118                                  ; Prompt for user input for the array. The input is received as a STRING
+   119 0000014C 6A00                    push qword 0 ; Ensure scanf reads 64 bits
+   120 0000014E 6A00                    push qword 0
+   121 00000150 B800000000              mov rax, 0
+   122 00000155 48BF-                   mov rdi, string_format
+   122 00000157 [D701000000000000] 
+   123 0000015F 4889E6                  mov rsi, rsp
+   124 00000162 E8(00000000)            call scanf
+   125                                  
+   126                                  ; Check if scanf actually stored the value into the array [r12] by checking if the low of rax (eax) equals -1. If so, jump to scan_ended. Otherwise, continue.
+   127 00000167 83F8FF                  cmp eax, -1 ; Note: This comparison ALSO checks if the user pressed CTRL + D
+   128 0000016A 742C                    je scan_ended
+   129                                  
+   130                                  ; Validate the most recent input by calling isfloat [bool isfloat(char [] input)]
+   131 0000016C 4889E7                  mov rdi, rsp
+   132 0000016F E8(00000000)            call isfloat
+   133 00000174 4883F800                cmp rax, 0 ; If isfloat returned a 0, then we did not get a float
+   134 00000178 7422                    je try_again
+   135                                  
+   136                                  ; Now that we have a valid float, call atof [double atof (char str[])] to convert the array of ASCII chars into a float
+   137 0000017A B800000000              mov rax, 0
+   138 0000017F 4889E7                  mov rdi, rsp
+   139 00000182 E8(00000000)            call atof ; Stores the float into xmm0
+   140                                  
+   141                                  ; Pop the stack now that we are done with the user-inputted float
+   142 00000187 58                      pop rax
+   143 00000188 58                      pop rax
+   144                                  
+   145                                  ; Insert the float into the array
+   146 00000189 F2420F1104F5-           movsd [sides + r14 * 8], xmm0
+   146 0000018F [00000000]         
+   147                                  
+   148                                  ; Increment the counter r14 then jump back to the top of the loop if everything goes well
+   149 00000193 49FFC6                  inc r14
+   150 00000196 EBAE                    jmp inputting_sides
+   151                                  ; End of the main loop inputting_sides to input sides into the array
+   152                                  
+   153                                  ;; Jump here if the scan failed
+   154                                  scan_ended:
+   155                                  
+   156                                  ;; Pop what is currently on the stack (to avoid segmentation faults) then exit the loop
+   157 00000198 58                      pop rax
+   158 00000199 58                      pop rax
+   159 0000019A EB22                    jmp continue_program
+   160                                  ;; End of scan_ended to end the loop inputting_sides if scanf failed
+   161                                  
+   162                                  ;; Jump here if a float was not inputted
+   163                                  try_again:
+   164                                  
+   165                                  ;; Print out a message requesting the user to try again due to invalid input
+   166 0000019C B800000000              mov rax, 0
+   167 000001A1 48BF-                   mov rdi, string_format
+   167 000001A3 [D701000000000000] 
+   168 000001AB 48BE-                   mov rsi, error_input_msg
+   168 000001AD [8301000000000000] 
+   169 000001B5 E8(00000000)            call printf
+   170                                  
+   171                                  ;; Pop what is currently on the stack (to avoid segmentation faults) then jump back to the top of the loop inputting_sides
+   172 000001BA 58                      pop rax
+   173 000001BB 58                      pop rax
+   174 000001BC EB88                    jmp inputting_sides
+   175                                  ;; End of try_again to request user to try again after inputting an invalid input
+   176                                  
+   177                                  ; Exit the loop inputting_sides to continue the rest of manager
+   178                                  continue_program:
+   179                                  
+   180                                  ; Print out thank you message
+   181 000001BE B800000000              mov rax, 0
+   182 000001C3 48BF-                   mov rdi, string_format
+   182 000001C5 [D701000000000000] 
+   183 000001CD 48BE-                   mov rsi, thank_you_msg
+   183 000001CF [5700000000000000] 
+   184 000001D7 E8(00000000)            call printf
+   185                                  
+   186                                  ; Validate if what is in the array is are sides of a valid triangle using istriangle [bool istriangle(double array[], long size)]. If valid, continue. Otherwise, jump to not_valid
+   187 000001DC B800000000              mov rax, 0
+   188 000001E1 48BF-                   mov rdi, sides
+   188 000001E3 [0000000000000000] 
+   189 000001EB 4C89F6                  mov rsi, r14
+   190 000001EE E8(00000000)            call istriangle
+   191 000001F3 4883F800                cmp rax, 0 ; If istriangle returned a 0, then we do not have a valid triangle
+   192 000001F7 0F84AB000000            je not_valid
+   193                                  
+   194                                  ; Print out message affirming that the triangle is valid
+   195 000001FD B800000000              mov rax, 0
+   196 00000202 48BF-                   mov rdi, string_format
+   196 00000204 [D701000000000000] 
+   197 0000020C 48BE-                   mov rsi, valid_triangle_msg
+   197 0000020E [6400000000000000] 
+   198 00000216 E8(00000000)            call printf
+   199                                  
+   200                                  ; Print out message that the Huron's formula will be applied to the sides of the triangle
+   201 0000021B B800000000              mov rax, 0
+   202 00000220 48BF-                   mov rdi, string_format
+   202 00000222 [D701000000000000] 
+   203 0000022A 48BE-                   mov rsi, huron_app_msg
+   203 0000022C [FC00000000000000] 
+   204 00000234 E8(00000000)            call printf
+   205                                  
+   206                                  ; With a valid triangle, call huron [double huron(double array[])] to calculate the area of the triangle using Huron's formula
+   207 00000239 B800000000              mov rax, 0
+   208 0000023E 48BF-                   mov rdi, sides
+   208 00000240 [0000000000000000] 
+   209 00000248 E8(00000000)            call huron
+   210 0000024D F2440F10D0              movsd xmm10, xmm0; Move the results from huron into non-volatile xmm10
+   211                                  
+   212                                  ; Print out the results of huron and explain how the results will be returned to the driver
+   213 00000252 B801000000              mov rax, 1
+   214 00000257 48BF-                   mov rdi, huron_results_msg
+   214 00000259 [3201000000000000] 
+   215 00000261 F2410F10C2              movsd xmm0, xmm10
+   216 00000266 E8(00000000)            call printf
+   217                                  
+   218                                  ; Move the results of Huron's Formula into the stack in preparation of sending back to main
+   219 0000026B B800000000              mov rax, 0
+   220 00000270 6A00                    push qword 0
+   221 00000272 F2440F111424            movsd [rsp], xmm10
+   222                                  
+   223                                  ; Call the macro to restore the non-GPRs + SSEs from the backup_storage_area
+   224                                  restore_non_gprs backup_storage_area
+   109 00000278 B807000000          <1>  mov rax, 7
+   110 0000027D BA00000000          <1>  mov rdx, 0
+   111 00000282 0FAE2C25[80010000]  <1>  xrstor [%1]
+   225                                  
+   226                                  ; Send back the successful results of manager to main
+   227 0000028A F20F100424              movsd xmm0, [rsp]
+   228 0000028F 58                      pop rax
+   229                                  
+   230                                  ; Call the macro to restore the GPRs
+   231                                  restore_gprs
+    83 00000290 9D                  <1>  popf
+    84 00000291 415F                <1>  pop r15
+    85 00000293 415E                <1>  pop r14
+    86 00000295 415D                <1>  pop r13
+    87 00000297 415C                <1>  pop r12
+    88 00000299 415B                <1>  pop r11
+    89 0000029B 415A                <1>  pop r10
+    90 0000029D 4159                <1>  pop r9
+    91 0000029F 4158                <1>  pop r8
+    92 000002A1 5E                  <1>  pop rsi
+    93 000002A2 5F                  <1>  pop rdi
+    94 000002A3 5A                  <1>  pop rdx
+    95 000002A4 59                  <1>  pop rcx
+    96 000002A5 5B                  <1>  pop rbx
+    97 000002A6 5D                  <1>  pop rbp
+   232                                  
+   233 000002A7 C3                      ret
+   234                                  ; End of continue_program which validated the sides of the triangle and used Huron's formula
+   235                                  
+   236                                  ; Jump here if istriangle returned a false to print some messages
+   237                                  not_valid:
+   238                                  
+   239                                  ; Print out the message stating that the triangle is valid
+   240 000002A8 B800000000              mov rax, 0
+   241 000002AD 48BF-                   mov rdi, string_format
+   241 000002AF [D701000000000000] 
+   242 000002B7 48BE-                   mov rsi, invalid_triangle_msg
+   242 000002B9 [AC00000000000000] 
+   243 000002C1 E8(00000000)            call printf
+   244                                  
+   245                                  ; Print out the message encouraging the user to run the program again
+   246 000002C6 B800000000              mov rax, 0
+   247 000002CB 48BF-                   mov rdi, string_format
+   247 000002CD [D701000000000000] 
+   248 000002D5 48BE-                   mov rsi, run_again_msg
+   248 000002D7 [9A01000000000000] 
+   249 000002DF E8(00000000)            call printf
+   250                                  
+   251                                  ; Send back a -1 to indicate invalid triangle
+   252 000002E4 B800000000              mov rax, 0
+   253 000002E9 6A00                    push qword 0
+   254 000002EB F2440F101425-           movsd xmm10, [fail]
+   254 000002F1 [DE010000]         
+   255 000002F5 F2440F111424            movsd [rsp], xmm10
+   256                                  
+   257                                  ; Call the macro to restore the non-GPRs + SSEs from the backup_storage_area
+   258                                  restore_non_gprs backup_storage_area
+   109 000002FB B807000000          <1>  mov rax, 7
+   110 00000300 BA00000000          <1>  mov rdx, 0
+   111 00000305 0FAE2C25[80010000]  <1>  xrstor [%1]
+   259                                  
+   260                                  ; Send back the failed results of manager back to main
+   261 0000030D F20F100424              movsd xmm0, [rsp]
+   262 00000312 58                      pop rax
+   263                                  
+   264                                  ; Call the macro to restore the GPRs
+   265                                  restore_gprs
+    83 00000313 9D                  <1>  popf
+    84 00000314 415F                <1>  pop r15
+    85 00000316 415E                <1>  pop r14
+    86 00000318 415D                <1>  pop r13
+    87 0000031A 415C                <1>  pop r12
+    88 0000031C 415B                <1>  pop r11
+    89 0000031E 415A                <1>  pop r10
+    90 00000320 4159                <1>  pop r9
+    91 00000322 4158                <1>  pop r8
+    92 00000324 5E                  <1>  pop rsi
+    93 00000325 5F                  <1>  pop rdi
+    94 00000326 5A                  <1>  pop rdx
+    95 00000327 59                  <1>  pop rcx
+    96 00000328 5B                  <1>  pop rbx
+    97 00000329 5D                  <1>  pop rbp
+   266                                  
+   267 0000032A C3                      ret

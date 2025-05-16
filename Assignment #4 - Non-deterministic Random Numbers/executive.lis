@@ -1,0 +1,426 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Program name: "Non-deterministic random numbers".  The intent of this program is to generate up to 100 random numbers using *
+     3                                  ; the non-deterministic random number generator found inside of modern X86 microprocessors.                                  *
+     4                                  ; Copyright (C) 2025  Solivan Hiep                                                                                           *
+     5                                  ; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+     6                                  ; version 3 as published by the Free Software Foundation.                                                                    *
+     7                                  ; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+     8                                  ; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+     9                                  ; A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    10                                  ;****************************************************************************************************************************
+    11                                  
+    12                                  
+    13                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    14                                  
+    15                                  ;Author information
+    16                                  ;  Author name: Solivan Hiep
+    17                                  ;  Author email: hiepsolivan@csu.fullerton.edu
+    18                                  ;  CWID: 8848458756
+    19                                  ;  Class: CPSC 240-03 - Class Nbr 13604
+    20                                  ;
+    21                                  ;Program information
+    22                                  ;  Program name: Non-deterministic Random Numbers
+    23                                  ;  Programming languages: Five modules in X86, two modules in C++, and one in bash
+    24                                  ;  Date program began: 2025-Mar-24
+    25                                  ;  Date of last update: 2025-Mar-27
+    26                                  ;  Files in the program: executive.asm, fill_random_array.asm, isnan.asm, normalize.asm, show_array.asm, main.cpp, sort.cpp, r.sh
+    27                                  ;
+    28                                  ;Purpose
+    29                                  ;  The intent of this program is to generate up to 100 random numbers using
+    30                                  ;  the non-deterministic random number generator found inside of modern X86 microprocessors.
+    31                                  ;
+    32                                  ;This file
+    33                                  ;  File name: manager.asm
+    34                                  ;  Language: X86-64
+    35                                  ;  Development Platform: Windows 11 Enterprise Ver. 24H2. Intel(R) Core(TM) i3-8145U CPU @ 2.10GHz 2.30 GHz Processor. Running on Ubuntu 22.04.5 LTS.
+    36                                  ;  Max page width: 172 columns
+    37                                  ;  Assemble: nasm -f elf64 -l executive.lis -o executive.o executive.asm
+    38                                  ;  Assemble (debug in GDB): nasm -f elf64 -gdwarf -l executive.lis -o executive.o executive.asm
+    39                                  ;  Page width: 172 columns
+    40                                  ;  Optimal print specification: Landscape, 7 points, monospace, 8½x11 paper
+    41                                  ;  Prototype of this function: char * executive()
+    42                                  ;
+    43                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    44                                  ;
+    45                                  ;===== Begin code area ====================================================================================================================================================
+    46                                  
+    47                                  ; Declarations
+    48                                  %include "utilities.inc"
+    49                              <1> ; Macro that backs up the GPRs
+    50                              <1> %macro backup_gprs 0
+    51                              <1>   push rbp
+    52                              <1>   mov rbp, rsp
+    53                              <1>   push rbx
+    54                              <1>   push rcx
+    55                              <1>   push rdx
+    56                              <1>   push rdi
+    57                              <1>   push rsi
+    58                              <1>   push r8
+    59                              <1>   push r9
+    60                              <1>   push r10
+    61                              <1>   push r11
+    62                              <1>   push r12
+    63                              <1>   push r13
+    64                              <1>   push r14
+    65                              <1>   push r15
+    66                              <1>   pushf
+    67                              <1> %endmacro
+    68                              <1> 
+    69                              <1> ; Macro that restores the GPRs
+    70                              <1> %macro restore_gprs 0
+    71                              <1>   popf
+    72                              <1>   pop r15
+    73                              <1>   pop r14
+    74                              <1>   pop r13
+    75                              <1>   pop r12
+    76                              <1>   pop r11
+    77                              <1>   pop r10
+    78                              <1>   pop r9
+    79                              <1>   pop r8
+    80                              <1>   pop rsi
+    81                              <1>   pop rdi
+    82                              <1>   pop rdx
+    83                              <1>   pop rcx
+    84                              <1>   pop rbx
+    85                              <1>   pop rbp
+    86                              <1> %endmacro
+    87                              <1> 
+    88                              <1> ; Macro that back ups non-GPRs/SSEs to an array stored in parameter %1
+    89                              <1> %macro backup_non_gprs 1
+    90                              <1>   mov rax, 7
+    91                              <1>   mov rdx, 0
+    92                              <1>   xsave [%1]
+    93                              <1> %endmacro
+    94                              <1> 
+    95                              <1> ; Macro that restores the non-GPRs/SSEs in storage array of parameter %1
+    96                              <1> %macro restore_non_gprs 1
+    97                              <1>   mov rax, 7
+    98                              <1>   mov rdx, 0
+    99                              <1>   xrstor [%1]
+   100                              <1> %endmacro
+   101                              <1> 
+   102                              <1> ; Macro that removes the new line from a string input in parameter %1
+   103                              <1> %macro remove_new_line 1
+   104                              <1>   mov r12, %1
+   105                              <1>   mov rax, 0
+   106                              <1>   mov rdi, r12
+   107                              <1>   call strlen
+   108                              <1>   mov [r12 + rax - 1], byte 0
+   109                              <1> %endmacro
+    49                                  extern fgets
+    50                                  extern printf
+    51                                  extern scanf
+    52                                  extern stdin
+    53                                  extern strlen
+    54                                  
+    55                                  extern fill_random_array
+    56                                  extern show_array
+    57                                  extern normalize_array
+    58                                  extern sort
+    59                                  global executive
+    60                                  
+    61                                  ; Declare initialized arrays
+    62                                  segment .data
+    63 00000000 506C6561736520656E-     enter_name_prompt db "Please enter your name: ", 0
+    63 00000009 74657220796F757220-
+    63 00000012 6E616D653A2000     
+    64 00000019 506C6561736520656E-     enter_title_prompt db "Please enter your title (Mr, Ms, Sargent, Chief, Project Leader, etc): ", 0
+    64 00000022 74657220796F757220-
+    64 0000002B 7469746C6520284D72-
+    64 00000034 2C204D732C20536172-
+    64 0000003D 67656E742C20436869-
+    64 00000046 65662C2050726F6A65-
+    64 0000004F 6374204C6561646572-
+    64 00000058 2C20657463293A2000 
+    65 00000061 4E69636520746F206D-     greeting_msg db "Nice to meet you %s %s", 10, 10, 0
+    65 0000006A 65657420796F752025-
+    65 00000073 732025730A0A00     
+    66 0000007A 546869732070726F67-     program_details_msg db "This program will generate 64-bit IEEE float numbers.", 10, 0
+    66 00000083 72616D2077696C6C20-
+    66 0000008C 67656E657261746520-
+    66 00000095 36342D626974204945-
+    66 0000009E 454520666C6F617420-
+    66 000000A7 6E756D626572732E0A-
+    66 000000B0 00                 
+    67 000000B1 486F77206D616E7920-     generate_number_prompt db "How many numbers do you want.  Today’s limit is 100 per customer. ", 0
+    67 000000BA 6E756D626572732064-
+    67 000000C3 6F20796F752077616E-
+    67 000000CC 742E2020546F646179-
+    67 000000D5 E2809973206C696D69-
+    67 000000DE 742069732031303020-
+    67 000000E7 70657220637573746F-
+    67 000000F0 6D65722E2000       
+    68 000000F6 596F7572206E756D62-     array_filled_msg db "Your numbers have been stored in an array.  Here is that array.", 10, 10, 0
+    68 000000FF 657273206861766520-
+    68 00000108 6265656E2073746F72-
+    68 00000111 656420696E20616E20-
+    68 0000011A 61727261792E202048-
+    68 00000123 657265206973207468-
+    68 0000012C 61742061727261792E-
+    68 00000135 0A0A00             
+    69 00000138 0A5468652061727261-     normalized_array_msg db 10, "The array will now be normalized to the range 1.0 to 2.0  Here is the normalized array", 10, 10, 0
+    69 00000141 792077696C6C206E6F-
+    69 0000014A 77206265206E6F726D-
+    69 00000153 616C697A656420746F-
+    69 0000015C 207468652072616E67-
+    69 00000165 6520312E3020746F20-
+    69 0000016E 322E30202048657265-
+    69 00000177 20697320746865206E-
+    69 00000180 6F726D616C697A6564-
+    69 00000189 2061727261790A0A00 
+    70 00000192 0A5468652061727261-     sort_array_msg db 10, "The array will now be sorted", 10, 10, 0
+    70 0000019B 792077696C6C206E6F-
+    70 000001A4 7720626520736F7274-
+    70 000001AD 65640A0A00         
+    71 000001B2 0A476F6F6420627965-     farewell_msg db 10, "Good bye %s.  You are welcome any time.", 10, 10, 0
+    71 000001BB 2025732E2020596F75-
+    71 000001C4 206172652077656C63-
+    71 000001CD 6F6D6520616E792074-
+    71 000001D6 696D652E0A0A00     
+    72 000001DD 256400                  integer_format db "%d", 0
+    73 000001E0 257300                  string_format db "%s", 0
+    74 000001E3 44656275670A00          debug db "Debug", 10, 0
+    75                                  
+    76                                  ; Declare uninitialized arrays
+    77                                  segment .bss
+    78                                  align 64
+    79 00000000 <res 340h>              backup_storage_area resb 832
+    80                                  
+    81 00000340 <res 30h>               name_input resb 48
+    82 00000370 <res 30h>               title_input resb 48
+    83 000003A0 <res 320h>              the_array resq 100
+    84                                  
+    85                                  segment .text
+    86                                  executive:
+    87                                  
+    88                                  ; Call the macro to back-up the GPRs
+    89                                  backup_gprs
+    51 00000000 55                  <1>  push rbp
+    52 00000001 4889E5              <1>  mov rbp, rsp
+    53 00000004 53                  <1>  push rbx
+    54 00000005 51                  <1>  push rcx
+    55 00000006 52                  <1>  push rdx
+    56 00000007 57                  <1>  push rdi
+    57 00000008 56                  <1>  push rsi
+    58 00000009 4150                <1>  push r8
+    59 0000000B 4151                <1>  push r9
+    60 0000000D 4152                <1>  push r10
+    61 0000000F 4153                <1>  push r11
+    62 00000011 4154                <1>  push r12
+    63 00000013 4155                <1>  push r13
+    64 00000015 4156                <1>  push r14
+    65 00000017 4157                <1>  push r15
+    66 00000019 9C                  <1>  pushf
+    90                                  
+    91                                  ; Call the macro to back-up the non-GPRs/SSEs the backup_storage_area
+    92                                  backup_non_gprs backup_storage_area
+    90 0000001A B807000000          <1>  mov rax, 7
+    91 0000001F BA00000000          <1>  mov rdx, 0
+    92 00000024 0FAE2425[00000000]  <1>  xsave [%1]
+    93                                  
+    94                                  ; Print out the prompt for the user to enter their name
+    95 0000002C B800000000              mov rax, 0
+    96 00000031 48BF-                   mov rdi, string_format
+    96 00000033 [E001000000000000] 
+    97 0000003B 48BE-                   mov rsi, enter_name_prompt
+    97 0000003D [0000000000000000] 
+    98 00000045 E8(00000000)            call printf
+    99                                  
+   100                                  ; Have the user input their name to store in name_input
+   101 0000004A B800000000              mov rax, 0
+   102 0000004F 48BF-                   mov rdi, name_input
+   102 00000051 [4003000000000000] 
+   103 00000059 BE30000000              mov rsi, 48
+   104 0000005E 488B1425[00000000]      mov rdx, [stdin]
+   105 00000066 E8(00000000)            call fgets
+   106                                  
+   107                                  ; Call the macro to remove the new line from name_input
+   108                                  remove_new_line name_input
+   104 0000006B 49BC-               <1>  mov r12, %1
+   104 0000006D [4003000000000000]  <1>
+   105 00000075 B800000000          <1>  mov rax, 0
+   106 0000007A 4C89E7              <1>  mov rdi, r12
+   107 0000007D E8(00000000)        <1>  call strlen
+   108 00000082 41C64404FF00        <1>  mov [r12 + rax - 1], byte 0
+   109                                  
+   110                                  ; Print out the prompt for the user to enter their title
+   111 00000088 B800000000              mov rax, 0
+   112 0000008D 48BF-                   mov rdi, string_format
+   112 0000008F [E001000000000000] 
+   113 00000097 48BE-                   mov rsi, enter_title_prompt
+   113 00000099 [1900000000000000] 
+   114 000000A1 E8(00000000)            call printf
+   115                                  
+   116                                  ; Have the user input their title to store in title_input
+   117 000000A6 B800000000              mov rax, 0
+   118 000000AB 48BF-                   mov rdi, title_input
+   118 000000AD [7003000000000000] 
+   119 000000B5 BE30000000              mov rsi, 48
+   120 000000BA 488B1425[00000000]      mov rdx, [stdin]
+   121 000000C2 E8(00000000)            call fgets
+   122                                  
+   123                                  ; Call the macro to remove the new line from title_input
+   124                                  remove_new_line title_input
+   104 000000C7 49BC-               <1>  mov r12, %1
+   104 000000C9 [7003000000000000]  <1>
+   105 000000D1 B800000000          <1>  mov rax, 0
+   106 000000D6 4C89E7              <1>  mov rdi, r12
+   107 000000D9 E8(00000000)        <1>  call strlen
+   108 000000DE 41C64404FF00        <1>  mov [r12 + rax - 1], byte 0
+   125                                  
+   126                                  ; Print out the message greeting the user with their name and title
+   127 000000E4 B800000000              mov rax, 0
+   128 000000E9 48BF-                   mov rdi, greeting_msg
+   128 000000EB [6100000000000000] 
+   129 000000F3 48BE-                   mov rsi, title_input
+   129 000000F5 [7003000000000000] 
+   130 000000FD 48BA-                   mov rdx, name_input
+   130 000000FF [4003000000000000] 
+   131 00000107 E8(00000000)            call printf
+   132                                  
+   133                                  ; Print out the message detailing what the program does
+   134 0000010C B800000000              mov rax, 0
+   135 00000111 48BF-                   mov rdi, string_format
+   135 00000113 [E001000000000000] 
+   136 0000011B 48BE-                   mov rsi, program_details_msg
+   136 0000011D [7A00000000000000] 
+   137 00000125 E8(00000000)            call printf
+   138                                  
+   139                                  ; Print out the prompt for the user to input how many numbers they wish to generate
+   140 0000012A B800000000              mov rax, 0
+   141 0000012F 48BF-                   mov rdi, string_format
+   141 00000131 [E001000000000000] 
+   142 00000139 48BE-                   mov rsi, generate_number_prompt
+   142 0000013B [B100000000000000] 
+   143 00000143 E8(00000000)            call printf
+   144                                  
+   145                                  ; Have the user input how many numbers they wish to generate and store it in r12
+   146 00000148 B800000000              mov rax, 0
+   147 0000014D 6A00                    push qword 0
+   148 0000014F 6A00                    push qword 0
+   149 00000151 48BF-                   mov rdi, integer_format
+   149 00000153 [DD01000000000000] 
+   150 0000015B 4889E6                  mov rsi, rsp
+   151 0000015E E8(00000000)            call scanf
+   152 00000163 4C8B2424                mov r12, [rsp]
+   153 00000167 58                      pop rax
+   154 00000168 58                      pop rax
+   155                                  
+   156                                  ; Check if the user inputted more than 100 for the array size. If so, adjust the size, otherwise, continue.
+   157 00000169 4983FC64                cmp r12, 100
+   158 0000016D 0F8D04010000            jge adjust_size
+   159                                  
+   160                                  continue:
+   161                                  ; Call fill_random_array [void fill_random_array(double array [], int size)] to fill the_array with the amount of random numbers the user specified
+   162 00000173 B800000000              mov rax, 0
+   163 00000178 48BF-                   mov rdi, the_array
+   163 0000017A [A003000000000000] 
+   164 00000182 4C89E6                  mov rsi, r12
+   165 00000185 E8(00000000)            call fill_random_array
+   166                                  
+   167                                  ; Print out the message stating that the array has been filled and is ready to be displayed
+   168 0000018A B800000000              mov rax, 0
+   169 0000018F 48BF-                   mov rdi, string_format
+   169 00000191 [E001000000000000] 
+   170 00000199 48BE-                   mov rsi, array_filled_msg
+   170 0000019B [F600000000000000] 
+   171 000001A3 E8(00000000)            call printf
+   172                                  
+   173                                  ; Call show_array [void show_array(double array [], int size)] to print out the array
+   174 000001A8 B800000000              mov rax, 0
+   175 000001AD 48BF-                   mov rdi, the_array
+   175 000001AF [A003000000000000] 
+   176 000001B7 4C89E6                  mov rsi, r12
+   177 000001BA E8(00000000)            call show_array
+   178                                  
+   179                                  ; Print out the message stating that the array has been normalized to the range 1.0 to 2.0
+   180 000001BF B800000000              mov rax, 0
+   181 000001C4 48BF-                   mov rdi, string_format
+   181 000001C6 [E001000000000000] 
+   182 000001CE 48BE-                   mov rsi, normalized_array_msg
+   182 000001D0 [3801000000000000] 
+   183 000001D8 E8(00000000)            call printf
+   184                                  
+   185                                  ; Call normalize_array [void normalize_array(double array [], int size)] to normalize the array to the range 1.0 to 20
+   186 000001DD B800000000              mov rax, 0
+   187 000001E2 48BF-                   mov rdi, the_array
+   187 000001E4 [A003000000000000] 
+   188 000001EC 4C89E6                  mov rsi, r12
+   189 000001EF E8(00000000)            call normalize_array
+   190                                  
+   191                                  ; Call show_array [void show_array(double array [], int size)] to print out the normalized ([1.0, 2)) array
+   192 000001F4 B800000000              mov rax, 0
+   193 000001F9 48BF-                   mov rdi, the_array
+   193 000001FB [A003000000000000] 
+   194 00000203 4C89E6                  mov rsi, r12
+   195 00000206 E8(00000000)            call show_array
+   196                                  
+   197                                  ; Print out the message stating that the array has been sorted
+   198 0000020B B800000000              mov rax, 0
+   199 00000210 48BF-                   mov rdi, string_format
+   199 00000212 [E001000000000000] 
+   200 0000021A 48BE-                   mov rsi, sort_array_msg
+   200 0000021C [9201000000000000] 
+   201 00000224 E8(00000000)            call printf
+   202                                  
+   203                                  ; Call sort [void sort (double array[], long array_size)] to sort the array using selection sort
+   204 00000229 B800000000              mov rax, 0
+   205 0000022E 48BF-                   mov rdi, the_array
+   205 00000230 [A003000000000000] 
+   206 00000238 4C89E6                  mov rsi, r12
+   207 0000023B E8(00000000)            call sort
+   208                                  
+   209                                  ; Call show_array [void show_array(double array [], int size)] to print out the sorted array
+   210 00000240 B800000000              mov rax, 0
+   211 00000245 48BF-                   mov rdi, the_array
+   211 00000247 [A003000000000000] 
+   212 0000024F 4C89E6                  mov rsi, r12
+   213 00000252 E8(00000000)            call show_array
+   214                                  
+   215                                  ; Print out the message saying farewell to the user by their inputted title
+   216 00000257 B800000000              mov rax, 0
+   217 0000025C 48BF-                   mov rdi, farewell_msg
+   217 0000025E [B201000000000000] 
+   218 00000266 48BE-                   mov rsi, title_input
+   218 00000268 [7003000000000000] 
+   219 00000270 E8(00000000)            call printf
+   220                                  
+   221 00000275 EB0B                    jmp end_program
+   222                                  ; Jump here if the user inputted more than 100 for the array size
+   223                                  adjust_size:
+   224                                  
+   225                                  ; Adjust the array size to the maximum (100), then proceed as normal
+   226 00000277 41BC64000000            mov r12, 100
+   227 0000027D E9F1FEFFFF              jmp continue
+   228                                  ; End of adjust_size to adjust the size of the maximum number of arrays
+   229                                  
+   230                                  end_program:
+   231                                  ; Call the macro to restore the non-GPRs/SSEs from the backup_storage_area
+   232                                  restore_non_gprs backup_storage_area
+    97 00000282 B807000000          <1>  mov rax, 7
+    98 00000287 BA00000000          <1>  mov rdx, 0
+    99 0000028C 0FAE2C25[00000000]  <1>  xrstor [%1]
+   233                                  
+   234                                  ; Send back the user's name back to main
+   235 00000294 48B8-                   mov rax, name_input
+   235 00000296 [4003000000000000] 
+   236                                  
+   237                                  ; Call the macro to restore the GPRs
+   238                                  restore_gprs
+    71 0000029E 9D                  <1>  popf
+    72 0000029F 415F                <1>  pop r15
+    73 000002A1 415E                <1>  pop r14
+    74 000002A3 415D                <1>  pop r13
+    75 000002A5 415C                <1>  pop r12
+    76 000002A7 415B                <1>  pop r11
+    77 000002A9 415A                <1>  pop r10
+    78 000002AB 4159                <1>  pop r9
+    79 000002AD 4158                <1>  pop r8
+    80 000002AF 5E                  <1>  pop rsi
+    81 000002B0 5F                  <1>  pop rdi
+    82 000002B1 5A                  <1>  pop rdx
+    83 000002B2 59                  <1>  pop rcx
+    84 000002B3 5B                  <1>  pop rbx
+    85 000002B4 5D                  <1>  pop rbp
+   239                                  
+   240 000002B5 C3                      ret
