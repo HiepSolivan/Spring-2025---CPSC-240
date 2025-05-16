@@ -1,0 +1,107 @@
+     1                                  ;**********************************************************************************************************************
+     2                                  ;Function name: "Get Frequency".  This software function extract the published frequency of processor running the     *
+     3                                  ;processor executing the function.  Copyright (C) 2021 Floyd Holliday                                                 *
+     4                                  ;                                                                                                                     *
+     5                                  ;Get Frequency is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser General   *
+     6                                  ;Public License, version 3, as published by the Free Software Foundation.                                             *
+     7                                  ;Get Frequency is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied  * 
+     8                                  ;warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more *
+     9                                  ;details.  You should have received a copy of the GNU Lesser General Public License along with Get Frequency.  If not *
+    10                                  ;see <https://www.gnu.org/licenses/>.                                                                                 *
+    11                                  ;**********************************************************************************************************************
+    12                                  
+    13                                  ;Copyright holder information
+    14                                  ;Author: Floyd Holliday
+    15                                  ;Contact: holliday@fullerton.edu
+    16                                  
+    17                                  ;Library function information
+    18                                  ;Library function name: Get Frequency
+    19                                  ;Language: X86-64 with Intel syntax
+    20                                  ;Date development began: 2020-Sept-02
+    21                                  ;Date of latest update:  2021-Nov-12
+    22                                  ;File name getfrequency.asm
+    23                                  ;Prototype:  double getfreq()
+    24                                  ;Status: Beta, available for public comment.
+    25                                  
+    26                                  ;Purpose: Extract the CPU maximum published speed from the processor
+    27                                  
+    28                                  ;Translation: nasm -f elf64 -o freq.o getfrequency.asm
+    29                                  ;======================================================================================================================
+    30                                  
+    31                                  ;Declaration area
+    32                                  global getfreq
+    33                                  
+    34                                  extern atof
+    35                                  
+    36                                  segment .data
+    37                                     ;Empty
+    38                                  
+    39                                  segment .bss
+    40                                     ;Empty
+    41                                  
+    42                                  segment .text
+    43                                  getfreq:
+    44                                  
+    45                                  ;Prolog: Back up the GPRs
+    46 00000000 55                      push rbp
+    47 00000001 4889E5                  mov rbp, rsp
+    48 00000004 53                      push rbx
+    49 00000005 51                      push rcx
+    50 00000006 52                      push rdx
+    51 00000007 57                      push rdi
+    52 00000008 56                      push rsi
+    53 00000009 4150                    push r8
+    54 0000000B 4151                    push r9
+    55 0000000D 4152                    push r10
+    56 0000000F 4153                    push r11
+    57 00000011 4154                    push r12
+    58 00000013 4155                    push r13
+    59 00000015 4156                    push r14
+    60 00000017 4157                    push r15
+    61 00000019 9C                      pushf
+    62                                  
+    63                                  
+    64                                  ;Extract data from processor in the form of two 4-byte strings
+    65 0000001A B804000080              mov rax, 0x0000000080000004
+    66 0000001F 0FA2                    cpuid
+    67                                  ;Answer is in ebx:eax as big endian strings using the standard ordering of bits.
+    68 00000021 4989DF                  mov       r15, rbx      ;Second part of string saved in r15
+    69 00000024 4989C6                  mov       r14, rax      ;First part of string saved in r14
+    70                                  
+    71                                  
+    72                                  ;Catenate the two short strings into one 8-byte string in big endian
+    73 00000027 4981E7FF000000          and r15, 0x00000000000000FF    ;Convert non-numeric chars to nulls
+    74 0000002E 49C1E720                shl r15, 32
+    75 00000032 4D09F7                  or r15, r14                    ;Combined string is in r15
+    76                                  
+    77                                  ;Use of mask: The number 0x00000000000000FF is a mask.  
+    78                                  ;In general masks are used to change some bits to 0 (or 1) and leave others unchanged.
+    79                                  
+    80                                  
+    81                                  ;Convert string now stored in r15 to an equivalent IEEE numeric quadword.
+    82 00000035 4157                    push r15
+    83 00000037 B800000000              mov rax,0          ;The value in rax is the number of xmm registers passed to atof, 
+    84 0000003C 4889E7                  mov rdi,rsp        ;rdi now points to the start of the 8-byte string.
+    85 0000003F E8(00000000)            call atof          ;The number is now in xmm0
+    86 00000044 58                      pop rax
+    87                                  
+    88                                  
+    89                                  ;Epilogue: restore data to the values held before this function was called.
+    90 00000045 9D                      popf
+    91 00000046 415F                    pop r15
+    92 00000048 415E                    pop r14
+    93 0000004A 415D                    pop r13
+    94 0000004C 415C                    pop r12
+    95 0000004E 415B                    pop r11
+    96 00000050 415A                    pop r10
+    97 00000052 4159                    pop r9
+    98 00000054 4158                    pop r8
+    99 00000056 5E                      pop rsi
+   100 00000057 5F                      pop rdi
+   101 00000058 5A                      pop rdx
+   102 00000059 59                      pop rcx
+   103 0000005A 5B                      pop rbx
+   104 0000005B 5D                      pop rbp               ;Restore the base pointer of the stack frame of the caller.
+   105 0000005C C3                      ret
+   106                                  
+   107 0000005D C3                      ret

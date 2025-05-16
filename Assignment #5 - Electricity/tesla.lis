@@ -1,0 +1,288 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Program name: "Electricity".  The intent of this program is to compute missing electrical information from            *
+     3                                  ; user-inputted information. The educational purpose is to provide me with experience in pure assembly programming.          *                                                         *
+     4                                  ; Copyright (C) 2025  Solivan Hiep                                                                                           *
+     5                                  ; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+     6                                  ; version 3 as published by the Free Software Foundation.                                                                    *
+     7                                  ; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+     8                                  ; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+     9                                  ; A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    10                                  ;****************************************************************************************************************************
+    11                                  
+    12                                  
+    13                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    14                                  
+    15                                  ;Author information
+    16                                  ;  Author name: Solivan Hiep
+    17                                  ;  Author email: hiepsolivan@csu.fullerton.edu
+    18                                  ;  CWID: 8848458756
+    19                                  ;  Class: CPSC 240-03 - Class Nbr 13604
+    20                                  ;
+    21                                  ;Program information
+    22                                  ;  Program name: Electricity
+    23                                  ;  Programming languages: Ten modules in X86, one in bash
+    24                                  ;  Date program began: 2025-Apr-04
+    25                                  ;  Date of last update: 2025-Apr-12
+    26                                  ;  Files in the program: faraday.asm, edison.asm, input_array.asm, atof.asm, isfloat.asm tesla.asm, ftoa.asm, syscall_fgets.asm, syscall_strlen.asm acdc.inc, r.sh
+    27                                  ;
+    28                                  ;Purpose
+    29                                  ;  The intent of this program is to compute missing electrical information from
+    30                                  ;  user-inputted information. The educational purpose is to provide me with experience in pure assembly programming.
+    31                                  ;
+    32                                  ;This file
+    33                                  ;  File name: tesla.asm
+    34                                  ;  Language: X86-64
+    35                                  ;  Development Platform: Windows 11 Enterprise Ver. 24H2. Intel(R) Core(TM) i3-8145U CPU @ 2.10GHz 2.30 GHz Processor. Running on Ubuntu 22.04.5 LTS.
+    36                                  ;  Max page width: 189 columns
+    37                                  ;  Assemble: nasm -f elf64 -l tesla.lis -o tesla.o tesla.asm
+    38                                  ;  Assemble (debug in GDB): nasm -f elf64 -gdwarf -l tesla.lis -o tesla.o tesla.asm
+    39                                  ;  Page width: 198 columns
+    40                                  ;  Optimal print specification: Landscape, 7 points, monospace, 8½x11 paper
+    41                                  ;  Prototype of this function: double tesla(double array[])
+    42                                  ;
+    43                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    44                                  ;
+    45                                  ;===== Begin code area ====================================================================================================================================================
+    46                                  
+    47                                  ; Declarations
+    48                                  %include "acdc.inc"
+    49                              <1> ;=====Declarations =======================================================================
+    50                              <1> ;These declarations are global to all the macros in this include file "acdc.inc".
+    51                              <1> SYS_READ equ 0
+    52                              <1> SYS_WRITE equ 1
+    53                              <1> STDIN equ 0
+    54                              <1> STDOUT equ 1
+    55                              <1> 
+    56                              <1> LF equ 10
+    57                              <1> NULL equ 0
+    58                              <1> 
+    59 00000000 0A0A0A0A0A0A0A0A    <1> newline db 0xa, 0xa, 0xa, 0xa, 0xa, 0xa, 0xa, 0xa
+    60                              <1> 
+    61                              <1> ; Macro that backs up the GPRs
+    62                              <1> %macro backup_gprs 0
+    63                              <1>   push rbp
+    64                              <1>   mov rbp, rsp
+    65                              <1>   push rbx
+    66                              <1>   push rcx
+    67                              <1>   push rdx
+    68                              <1>   push rdi
+    69                              <1>   push rsi
+    70                              <1>   push r8
+    71                              <1>   push r9
+    72                              <1>   push r10
+    73                              <1>   push r11
+    74                              <1>   push r12
+    75                              <1>   push r13
+    76                              <1>   push r14
+    77                              <1>   push r15
+    78                              <1>   pushf
+    79                              <1> %endmacro
+    80                              <1> 
+    81                              <1> ; Macro that restores the GPRs
+    82                              <1> %macro restore_gprs 0
+    83                              <1>   popf
+    84                              <1>   pop r15
+    85                              <1>   pop r14
+    86                              <1>   pop r13
+    87                              <1>   pop r12
+    88                              <1>   pop r11
+    89                              <1>   pop r10
+    90                              <1>   pop r9
+    91                              <1>   pop r8
+    92                              <1>   pop rsi
+    93                              <1>   pop rdi
+    94                              <1>   pop rdx
+    95                              <1>   pop rcx
+    96                              <1>   pop rbx
+    97                              <1>   pop rbp
+    98                              <1> %endmacro
+    99                              <1> 
+   100                              <1> ; Macro that back ups non-GPRs/SSEs to an array stored in parameter %1
+   101                              <1> %macro backup_non_gprs 1
+   102                              <1>   mov rax, 7
+   103                              <1>   mov rdx, 0
+   104                              <1>   xsave [%1]
+   105                              <1> %endmacro
+   106                              <1> 
+   107                              <1> ; Macro that restores the non-GPRs/SSEs in storage array of parameter %1
+   108                              <1> %macro restore_non_gprs 1
+   109                              <1>   mov rax, 7
+   110                              <1>   mov rdx, 0
+   111                              <1>   xrstor [%1]
+   112                              <1> %endmacro
+   113                              <1> 
+   114                              <1> ; Macro to print a newline
+   115                              <1> %macro new_line 0
+   116                              <1>   mov rax, SYS_WRITE
+   117                              <1>   mov rdi, STDOUT
+   118                              <1>   mov rsi, newline
+   119                              <1>   mov rdx, 1
+   120                              <1>   syscall
+   121                              <1> %endmacro
+   122                              <1> 
+   123                              <1> ; Macro that reads each individual character from user input to store in parameter %1 [Limit: 50 chars (same as size of parameter %1)]
+   124                              <1> %macro syscall_user_input_macro 1
+   125                              <1>   ; %1 = Where to store the string
+   126                              <1>   mov rbx, %1
+   127                              <1> 
+   128                              <1>   ; Maintain a counter to avoid over-indexing
+   129                              <1>   xor r8, r8
+   130                              <1> 
+   131                              <1>   ; Set off the loop to read each character
+   132                              <1>   %%read_chars:
+   133                              <1>   ; Obtain one character from the user
+   134                              <1>   mov rax, SYS_READ
+   135                              <1>   mov rdi, STDIN
+   136                              <1>   lea rsi, byte[chr] ; Use lea (Load Effective Address) to get the address of the character to be read
+   137                              <1>   mov rdx, 1 ; Read one character
+   138                              <1>   syscall
+   139                              <1> 
+   140                              <1>   ; Obtain the character from syscall stored in al [the low of rax's low's low] and check if its '\n' [Line feed]. If so, jump out; otherwise, continue
+   141                              <1>   mov al, byte[chr]
+   142                              <1>   cmp al, LF
+   143                              <1>   je %%read_done
+   144                              <1> 
+   145                              <1>   ; Increment the counter and compare it to the max string size. If the counter is greater or equal, reset the loop to stop placing chars in the buffer. Otherwise, continue
+   146                              <1>   inc r8
+   147                              <1>   cmp r8, 50
+   148                              <1>   jge %%read_chars ; Doing this will force the above read_done jump as the buffer is now cleared
+   149                              <1> 
+   150                              <1>   ; Update the string at the index r8 and the address of the string
+   151                              <1>   mov byte[rbx], al
+   152                              <1>   inc rbx
+   153                              <1> 
+   154                              <1>   ; Reset the loop
+   155                              <1>   jmp %%read_chars
+   156                              <1>   ; End of read_chars to read each character from user input
+   157                              <1> 
+   158                              <1>   ; Jump here once you are finished reading
+   159                              <1>   %%read_done:
+   160                              <1> 
+   161                              <1>   ; Add a null terminator character to the end of the string
+   162                              <1>   mov byte[rbx], NULL
+   163                              <1> %endmacro
+   164                              <1> 
+   165                              <1> ; Macro that obtains the string length of the string stored in parameter %1 to output into parameter %2
+   166                              <1> %macro syscall_strlen_macro 2
+   167                              <1>   ; %1 - The string to find the length of
+   168                              <1>   ; %2 - The length of the string
+   169                              <1>   mov r12, %1
+   170                              <1> 
+   171                              <1>   ; Maintain a counter for each character
+   172                              <1>   xor r8, r8
+   173                              <1> 
+   174                              <1>   ; Load the effective address of the string to use as an index
+   175                              <1>   lea r9, [r12]
+   176                              <1> 
+   177                              <1>   ; Kick of the loop to get the string length
+   178                              <1>   %%count_chars:
+   179                              <1>   ; Check for the null character. If at null char, jump. Otherwise, continue
+   180                              <1>   cmp byte [r9], 0
+   181                              <1>   je %%count_done
+   182                              <1> 
+   183                              <1>   ; Increment both the character count and index then reset the loop
+   184                              <1>   inc r8
+   185                              <1>   inc r9
+   186                              <1>   jmp %%count_chars
+   187                              <1>   ; End of count_chars to obtain the string length
+   188                              <1> 
+   189                              <1>   ; Jump here to exit the macro
+   190                              <1>   %%count_done:
+   191                              <1>   mov %2, r8
+   192                              <1> 
+   193                              <1> %endmacro
+    49                                  global tesla
+    50                                  
+    51                                  ; Declare initialized arrays
+    52                                  segment .data
+    53 00000000 000000000000F03F        one dq 1.0
+    54                                  
+    55                                  ; Declare uninitialized arrays
+    56                                  segment .bss
+    57                                  align 64
+    58 00000000 <res 340h>              backup_storage_area resb 832
+    59                                  
+    60                                  segment .text
+    61                                  tesla:
+    62                                  ; Call the macro to back up the GPRs
+    63                                  backup_gprs
+    63 00000008 55                  <1>  push rbp
+    64 00000009 4889E5              <1>  mov rbp, rsp
+    65 0000000C 53                  <1>  push rbx
+    66 0000000D 51                  <1>  push rcx
+    67 0000000E 52                  <1>  push rdx
+    68 0000000F 57                  <1>  push rdi
+    69 00000010 56                  <1>  push rsi
+    70 00000011 4150                <1>  push r8
+    71 00000013 4151                <1>  push r9
+    72 00000015 4152                <1>  push r10
+    73 00000017 4153                <1>  push r11
+    74 00000019 4154                <1>  push r12
+    75 0000001B 4155                <1>  push r13
+    76 0000001D 4156                <1>  push r14
+    77 0000001F 4157                <1>  push r15
+    78 00000021 9C                  <1>  pushf
+    64                                  
+    65                                  ; Call the macro to back up the non-GPRs/SSEs into backup_storage_area
+    66                                  backup_non_gprs backup_storage_area
+   102 00000022 B807000000          <1>  mov rax, 7
+   103 00000027 BA00000000          <1>  mov rdx, 0
+   104 0000002C 0FAE2425[00000000]  <1>  xsave [%1]
+    67                                  
+    68                                  ; Move the arguments received (the array of resistances) and place them into the non-volatile register r12
+    69 00000034 4989FC                  mov r12, rdi
+    70                                  
+    71                                  ; Move each resistance in the array into non-volatile registers xmm10, xmm11, and xmm12
+    72 00000037 F2450F101424            movsd xmm10, [r12 + 0 * 8]
+    73 0000003D F2450F105C2408          movsd xmm11, [r12 + 1 * 8]
+    74 00000044 F2450F10642410          movsd xmm12, [r12 + 2 * 8]
+    75                                  
+    76                                  ; Find the reciprocal of each resistance then find their sums ((1/R1) + ((1/R2) + (1/R3))
+    77 0000004B F20F100C25-             movsd xmm1, [one]
+    77 00000050 [00000000]         
+    78 00000054 F20F10D1                movsd xmm2, xmm1
+    79 00000058 F2410F5ED2              divsd xmm2, xmm10 ; 1/R1
+    80 0000005D F20F10D9                movsd xmm3, xmm1
+    81 00000061 F2410F5EDB              divsd xmm3, xmm11 ; 1/R2
+    82 00000066 F20F10E1                movsd xmm4, xmm1
+    83 0000006A F2410F5EE4              divsd xmm4, xmm12 ; 1/R3
+    84 0000006F F20F58D3                addsd xmm2, xmm3
+    85 00000073 F20F58D4                addsd xmm2, xmm4
+    86                                  
+    87                                  ; Find the reciprocal of the reciprocals to find the total resistance 1/((1/R1) + ((1/R2) + (1/R3))
+    88 00000077 F20F5ECA                divsd xmm1, xmm2
+    89 0000007B F2440F10E9              movsd xmm13, xmm1
+    90                                  
+    91                                  ; Prepare to send back the total resistance by pushing it to the stack
+    92 00000080 6A00                    push qword 0
+    93 00000082 F2440F112C24            movsd [rsp], xmm13
+    94                                  
+    95                                  ; Call the macro to restore the non-GPRs/SSEs from backup_storage_area
+    96                                  restore_non_gprs backup_storage_area
+   109 00000088 B807000000          <1>  mov rax, 7
+   110 0000008D BA00000000          <1>  mov rdx, 0
+   111 00000092 0FAE2C25[00000000]  <1>  xrstor [%1]
+    97                                  
+    98                                  ; Send back the total resistance and reset the stack
+    99 0000009A F20F100424              movsd xmm0, [rsp]
+   100 0000009F 58                      pop rax
+   101                                  
+   102                                  ; Call the macro to restore the GPRs
+   103                                  restore_gprs
+    83 000000A0 9D                  <1>  popf
+    84 000000A1 415F                <1>  pop r15
+    85 000000A3 415E                <1>  pop r14
+    86 000000A5 415D                <1>  pop r13
+    87 000000A7 415C                <1>  pop r12
+    88 000000A9 415B                <1>  pop r11
+    89 000000AB 415A                <1>  pop r10
+    90 000000AD 4159                <1>  pop r9
+    91 000000AF 4158                <1>  pop r8
+    92 000000B1 5E                  <1>  pop rsi
+    93 000000B2 5F                  <1>  pop rdi
+    94 000000B3 5A                  <1>  pop rdx
+    95 000000B4 59                  <1>  pop rcx
+    96 000000B5 5B                  <1>  pop rbx
+    97 000000B6 5D                  <1>  pop rbp
+   104                                  
+   105 000000B7 C3                      ret

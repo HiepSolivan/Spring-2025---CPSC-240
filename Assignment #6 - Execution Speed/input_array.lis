@@ -1,0 +1,231 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Program name: "Execution Speed".  The academic objective is to learn how to utilize the clock.
+     3                                  ; The application objective is to measure the average time require to perform one floating point addition: addsd xmm10,xmm11 *
+     4                                  ; Copyright (C) 2025  Solivan Hiep                                                                                           *
+     5                                  ; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+     6                                  ; version 3 as published by the Free Software Foundation.                                                                    *
+     7                                  ; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+     8                                  ; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+     9                                  ; A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    10                                  ;****************************************************************************************************************************
+    11                                  
+    12                                  
+    13                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    14                                  
+    15                                  ;Author information
+    16                                  ;  Author name: Solivan Hiep
+    17                                  ;  Author email: hiepsolivan@csu.fullerton.edu
+    18                                  ;  CWID: 8848458756
+    19                                  ;  Class: CPSC 240-03 - Class Nbr 13604
+    20                                  ;
+    21                                  ;Program information
+    22                                  ;  Program name: Execution Speed
+    23                                  ;  Programming languages: Six modules in X86, two modules in C++, and one in bash
+    24                                  ;  Date program began: 2025-Apr-21
+    25                                  ;  Date of last update: 2025-Apr-25
+    26                                  ;  Files in the program: manager.asm, input_array.asm, isfloat.asm, sum.asm, getfrequency.asm, utilities.inc, clock.cpp, r.sh
+    27                                  ;
+    28                                  ;Purpose
+    29                                  ;  The academic objective is to learn how to utilize the clock.
+    30                                  ;  The application objective is to measure the average time require to perform one floating point addition: addsd xmm10,xmm11
+    31                                  ;
+    32                                  ;This file
+    33                                  ;  File name: input_array.asm
+    34                                  ;  Language: X86-64
+    35                                  ;  Max page width: 172 columns
+    36                                  ;  Assemble: nasm -f elf64 -l input_array.lis -o input_array.o input_array.asm
+    37                                  ;  Page width: 172 columns
+    38                                  ;  Optimal print specification: Landscape, 7 points, monospace, 8½x11 paper
+    39                                  ;  Prototype of this function: void input_array(double array[], long capacity)
+    40                                  ;
+    41                                  ;========1=========2=========3=========4=========5=========6=========7=========8=========9=========0=========1=========2=========3=========4=========5=========6=========7**
+    42                                  ;
+    43                                  ;===== Begin code area ====================================================================================================================================================
+    44                                  
+    45                                  ; Declarations
+    46                                  extern atof
+    47                                  extern printf
+    48                                  extern scanf
+    49                                  
+    50                                  extern isfloat
+    51                                  global input_array
+    52                                  
+    53                                  ; Declare initialized arrays
+    54                                  segment .data
+    55 00000000 20202020546865206C-     invalid_input_msg db "    The last input was invalid and not entered into the array.  Try again.", 10, 0
+    55 00000009 61737420696E707574-
+    55 00000012 2077617320696E7661-
+    55 0000001B 6C696420616E64206E-
+    55 00000024 6F7420656E74657265-
+    55 0000002D 6420696E746F207468-
+    55 00000036 652061727261792E20-
+    55 0000003F 205472792061676169-
+    55 00000048 6E2E0A00           
+    56 0000004C 202020205468652061-     capacity_reached_msg db "    The array has reached its capacity.  Exiting...", 10, 0
+    56 00000055 727261792068617320-
+    56 0000005E 726561636865642069-
+    56 00000067 747320636170616369-
+    56 00000070 74792E202045786974-
+    56 00000079 696E672E2E2E0A00   
+    57                                  
+    58 00000081 20202000                whitespace db "   ", 0
+    59 00000085 257300                  string_format db "%s", 0
+    60                                  
+    61                                  ; Declare uninitialized arrays
+    62                                  segment .bss
+    63                                  align 64
+    64 00000000 <res 340h>              backup_storage_area resb 832
+    65                                  
+    66                                  segment .text
+    67                                  input_array:
+    68                                  
+    69                                  ; Backup the GPRs
+    70 00000000 55                      push rbp
+    71 00000001 4889E5                  mov rbp, rsp
+    72 00000004 53                      push rbx
+    73 00000005 51                      push rcx
+    74 00000006 52                      push rdx
+    75 00000007 57                      push rdi
+    76 00000008 56                      push rsi
+    77 00000009 4150                    push r8
+    78 0000000B 4151                    push r9
+    79 0000000D 4152                    push r10
+    80 0000000F 4153                    push r11
+    81 00000011 4154                    push r12
+    82 00000013 4155                    push r13
+    83 00000015 4156                    push r14
+    84 00000017 4157                    push r15
+    85 00000019 9C                      pushf
+    86                                  
+    87                                  ; Backup other registers/sse registers
+    88 0000001A B807000000              mov rax, 7
+    89 0000001F BA00000000              mov rdx, 0
+    90 00000024 0FAE2425[00000000]      xsave [backup_storage_area]
+    91                                  
+    92                                  ; Move the arguments received (the address to the array + array capacity) into non-volatile registers r12 and r13 to affect the actual array + future use in logic
+    93 0000002C 4989FC                  mov r12, rdi ; The array
+    94 0000002F 4989F5                  mov r13, rsi ; The array's capacity
+    95                                  
+    96                                  ; Maintain a counter for the array using the non-volatile register r14 to ensure no over-indexing
+    97 00000032 4D31F6                  xor r14, r14 ; Comparing r14 to itself via xor sets r14 to 0
+    98                                  
+    99                                  ; Kick of the main loop to ask for user input to insert into an array
+   100                                  top_of_loop:
+   101                                  
+   102                                  ; Check for over-indexing by determining if r14 >= r13. If so, exit. Otherwise, continue
+   103 00000035 4D39EE                  cmp r14, r13
+   104 00000038 7D66                    jge capacity_full
+   105                                  
+   106                                  ; Print out leading whitespace before input for formatting
+   107 0000003A B800000000              mov rax, 0
+   108 0000003F 48BF-                   mov rdi, string_format
+   108 00000041 [8500000000000000] 
+   109 00000049 48BE-                   mov rsi, whitespace
+   109 0000004B [8100000000000000] 
+   110 00000053 E8(00000000)            call printf
+   111                                  
+   112                                  ; Prompt for user input for the array. The input is received as a STRING
+   113 00000058 6A00                    push qword 0 ; Ensure scanf reads 64 bits
+   114 0000005A 6A00                    push qword 0
+   115 0000005C B800000000              mov rax, 0
+   116 00000061 48BF-                   mov rdi, string_format
+   116 00000063 [8500000000000000] 
+   117 0000006B 4889E6                  mov rsi, rsp
+   118 0000006E E8(00000000)            call scanf
+   119                                  
+   120                                  ; Check if scanf actually stored the value into the array [r12] by checking if the low of rax (eax) equals -1. If so, jump to scan_ended. Otherwise, continue.
+   121 00000073 83F8FF                  cmp eax, -1 ; Note: This comparison ALSO checks if the user pressed CTRL + D
+   122 00000076 7448                    je scan_ended
+   123                                  
+   124                                  ; Validate the most recent input by calling isfloat [bool isfloat(char [] input)]
+   125 00000078 4889E7                  mov rdi, rsp
+   126 0000007B E8(00000000)            call isfloat
+   127 00000080 4883F800                cmp rax, 0 ; If isfloat returned a 0, then we did not get a float
+   128 00000084 743E                    je try_again
+   129                                  
+   130                                  ; Now that we have a valid float, call atof [double atof (char str[])] to convert the array of ASCII chars into a float
+   131 00000086 B800000000              mov rax, 0
+   132 0000008B 4889E7                  mov rdi, rsp
+   133 0000008E E8(00000000)            call atof ; Stores the float into xmm0
+   134                                  
+   135                                  ; Pop the stack as we are now done with the user-inputted float
+   136 00000093 58                      pop rax
+   137 00000094 58                      pop rax
+   138                                  
+   139                                  ; Insert the user-inputted float into the array [r12] at the counter's [r14] current position
+   140 00000095 F2430F1104F4            movsd [r12 + r14 * 8], xmm0
+   141                                  
+   142                                  ; Increment the counter by one and restart the main loop if everything goes well
+   143 0000009B 49FFC6                  inc r14
+   144 0000009E EB95                    jmp top_of_loop
+   145                                  ; End of the main loop to ask for user input to insert into the array
+   146                                  
+   147                                  ;; Jump here if the array is now full
+   148                                  capacity_full:
+   149                                  
+   150                                  ;; Print out a message telling the user the array is full
+   151 000000A0 B800000000              mov rax, 0
+   152 000000A5 48BF-                   mov rdi, string_format
+   152 000000A7 [8500000000000000] 
+   153 000000AF 48BE-                   mov rsi, capacity_reached_msg
+   153 000000B1 [4C00000000000000] 
+   154 000000B9 E8(00000000)            call printf
+   155                                  
+   156                                  ;; Exit the main loop
+   157 000000BE EB29                    jmp out_of_loop
+   158                                  ;; End of capacity_full to inform user the array is full
+   159                                  
+   160                                  ;; Jump here if scanf failed OR CTRL + D was pressed to end the main loop
+   161                                  scan_ended:
+   162                                  
+   163                                  ;; Pop what is currently on the stack (to avoid segmentation faults) then exit the loop
+   164 000000C0 58                      pop rax
+   165 000000C1 58                      pop rax
+   166 000000C2 EB25                    jmp out_of_loop
+   167                                  ;; End of scan_ended to end the main loop if scanf failed OR CTRL + D was pressed
+   168                                  
+   169                                  ;; Jump here if you scanf did NOT receive a float to inform the user of invalid input and let them try again
+   170                                  try_again:
+   171                                  
+   172                                  ;; Print out a message for the user to try again
+   173 000000C4 B800000000              mov rax, 0
+   174 000000C9 48BF-                   mov rdi, string_format
+   174 000000CB [8500000000000000] 
+   175 000000D3 48BE-                   mov rsi, invalid_input_msg
+   175 000000D5 [0000000000000000] 
+   176 000000DD E8(00000000)            call printf
+   177                                  
+   178                                  ;; Pop the failed input on the stack (to avoid segmentation faults) then jump back to the top of the main loop
+   179 000000E2 58                      pop rax
+   180 000000E3 58                      pop rax
+   181 000000E4 E94CFFFFFF              jmp top_of_loop
+   182                                  ;; End of try_again to inform the user of invalid input and let them try again
+   183                                  
+   184                                  ; Exit the main loop and complete the program
+   185                                  out_of_loop:
+   186                                  
+   187                                  ; Restore the values to non-GPRs/sse registers
+   188 000000E9 B807000000              mov rax, 7
+   189 000000EE BA00000000              mov rdx, 0
+   190 000000F3 0FAE2C25[00000000]      xrstor [backup_storage_area]
+   191                                  
+   192                                  ; Send back the array's size stored in r14
+   193 000000FB 4C89F0                  mov rax, r14
+   194                                  
+   195                                  ; Restore the GPRs
+   196 000000FE 9D                      popf
+   197 000000FF 415F                    pop r15
+   198 00000101 415E                    pop r14
+   199 00000103 415D                    pop r13
+   200 00000105 415C                    pop r12
+   201 00000107 415B                    pop r11
+   202 00000109 415A                    pop r10
+   203 0000010B 4159                    pop r9
+   204 0000010D 4158                    pop r8
+   205 0000010F 5E                      pop rsi
+   206 00000110 5F                      pop rdi
+   207 00000111 5A                      pop rdx
+   208 00000112 59                      pop rcx
+   209 00000113 5B                      pop rbx
+   210 00000114 5D                      pop rbp
+   211 00000115 C3                      ret
