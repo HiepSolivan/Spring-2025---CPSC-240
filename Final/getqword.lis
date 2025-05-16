@@ -1,0 +1,151 @@
+     1                                  ;Your name : Solivan Hiep
+     2                                  ;Your cwid : 884845876
+     3                                  ;Your section number : 240 - 3
+     4                                  ;Your email address : hiepsolivan @csu.fullerton.edu
+     5                                  ;Today’s date : 4 / 23 / 2025
+     6                                  ;Identifier : Final program.
+     7                                  
+     8                                  ; Declarations
+     9                                  %include "utilities.inc"
+    10                              <1> ;Your name : Solivan Hiep
+    11                              <1> ;Your cwid : 884845876
+    12                              <1> ;Your section number : 240 - 3
+    13                              <1> ;Your email address : hiepsolivan @csu.fullerton.edu
+    14                              <1> ;Today’s date : 4 / 23 / 2025
+    15                              <1> ;Identifier : Final program.
+    16                              <1> 
+    17                              <1> ; Macro that backs up the GPRs
+    18                              <1> %macro backup_gprs 0
+    19                              <1>   push rbp
+    20                              <1>   mov rbp, rsp
+    21                              <1>   push rbx
+    22                              <1>   push rcx
+    23                              <1>   push rdx
+    24                              <1>   push rdi
+    25                              <1>   push rsi
+    26                              <1>   push r8
+    27                              <1>   push r9
+    28                              <1>   push r10
+    29                              <1>   push r11
+    30                              <1>   push r12
+    31                              <1>   push r13
+    32                              <1>   push r14
+    33                              <1>   push r15
+    34                              <1>   pushf
+    35                              <1> %endmacro
+    36                              <1> 
+    37                              <1> ; Macro that restores the GPRs
+    38                              <1> %macro restore_gprs 0
+    39                              <1>   popf
+    40                              <1>   pop r15
+    41                              <1>   pop r14
+    42                              <1>   pop r13
+    43                              <1>   pop r12
+    44                              <1>   pop r11
+    45                              <1>   pop r10
+    46                              <1>   pop r9
+    47                              <1>   pop r8
+    48                              <1>   pop rsi
+    49                              <1>   pop rdi
+    50                              <1>   pop rdx
+    51                              <1>   pop rcx
+    52                              <1>   pop rbx
+    53                              <1>   pop rbp
+    54                              <1> %endmacro
+    55                              <1> 
+    56                              <1> ; Macro that back ups non-GPRs/SSEs to an array stored in parameter %1
+    57                              <1> %macro backup_non_gprs 1
+    58                              <1>   mov rax, 7
+    59                              <1>   mov rdx, 0
+    60                              <1>   xsave [%1]
+    61                              <1> %endmacro
+    62                              <1> 
+    63                              <1> ; Macro that restores the non-GPRs/SSEs in storage array of parameter %1
+    64                              <1> %macro restore_non_gprs 1
+    65                              <1>   mov rax, 7
+    66                              <1>   mov rdx, 0
+    67                              <1>   xrstor [%1]
+    68                              <1> %endmacro
+    69                              <1> 
+    70                              <1> ; Macro that obtains the current number of ticks from the clock and places them in rdx
+    71                              <1> %macro extract_tics 0
+    72                              <1>   mov rdx, 0
+    73                              <1>   cpuid
+    74                              <1>   rdtsc
+    75                              <1>   shl rdx, 32
+    76                              <1>   add rdx, rax
+    77                              <1> %endmacro
+    10                                  global getqword
+    11                                  extern printf
+    12                                  
+    13                                  ; Declare initialized arrays
+    14                                  segment .data
+    15                                  
+    16                                  
+    17                                  ; Declare uninitialized arrays
+    18                                  segment .bss
+    19                                  align 64
+    20 00000000 <res 340h>              backup_storage_area resb 832
+    21                                  
+    22                                  segment .text
+    23                                  getqword:
+    24                                  
+    25                                  ; Call the macro that backs up the GPRs
+    26                                  backup_gprs
+    19 00000000 55                  <1>  push rbp
+    20 00000001 4889E5              <1>  mov rbp, rsp
+    21 00000004 53                  <1>  push rbx
+    22 00000005 51                  <1>  push rcx
+    23 00000006 52                  <1>  push rdx
+    24 00000007 57                  <1>  push rdi
+    25 00000008 56                  <1>  push rsi
+    26 00000009 4150                <1>  push r8
+    27 0000000B 4151                <1>  push r9
+    28 0000000D 4152                <1>  push r10
+    29 0000000F 4153                <1>  push r11
+    30 00000011 4154                <1>  push r12
+    31 00000013 4155                <1>  push r13
+    32 00000015 4156                <1>  push r14
+    33 00000017 4157                <1>  push r15
+    34 00000019 9C                  <1>  pushf
+    27                                  
+    28                                  ; Call the macro that backs up the non-GPRs/SSEs into the backup_storage_area
+    29                                  backup_non_gprs backup_storage_area
+    58 0000001A B807000000          <1>  mov rax, 7
+    59 0000001F BA00000000          <1>  mov rdx, 0
+    60 00000024 0FAE2425[00000000]  <1>  xsave [%1]
+    30                                  
+    31                                  ; Move the obtained address into a non-volatile register
+    32 0000002C 4C8B27                  mov r12, qword[rdi]
+    33                                  
+    34                                  ; Dereference the address to obtain a hex value
+    35 0000002F 4D8B3424                mov r14, qword[r12]
+    36                                  
+    37                                  ; Call the macro that restores the non-GPRs/SSEs from the backup_storage_area
+    38                                  restore_non_gprs backup_storage_area
+    65 00000033 B807000000          <1>  mov rax, 7
+    66 00000038 BA00000000          <1>  mov rdx, 0
+    67 0000003D 0FAE2C25[00000000]  <1>  xrstor [%1]
+    39                                  
+    40                                  ; Send back the obtained hex value to the caller
+    41 00000045 4C89F0                  mov rax, r14
+    42                                  
+    43                                  ; Call the macro that restores the GPRs
+    44                                  restore_gprs
+    39 00000048 9D                  <1>  popf
+    40 00000049 415F                <1>  pop r15
+    41 0000004B 415E                <1>  pop r14
+    42 0000004D 415D                <1>  pop r13
+    43 0000004F 415C                <1>  pop r12
+    44 00000051 415B                <1>  pop r11
+    45 00000053 415A                <1>  pop r10
+    46 00000055 4159                <1>  pop r9
+    47 00000057 4158                <1>  pop r8
+    48 00000059 5E                  <1>  pop rsi
+    49 0000005A 5F                  <1>  pop rdi
+    50 0000005B 5A                  <1>  pop rdx
+    51 0000005C 59                  <1>  pop rcx
+    52 0000005D 5B                  <1>  pop rbx
+    53 0000005E 5D                  <1>  pop rbp
+    45                                  
+    46 0000005F C3                      ret

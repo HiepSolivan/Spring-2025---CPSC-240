@@ -1,0 +1,219 @@
+     1                                  ;Your name : Solivan Hiep
+     2                                  ;Your cwid : 884845876
+     3                                  ;Your section number : 240 - 3
+     4                                  ;Your email address : hiepsolivan @csu.fullerton.edu
+     5                                  ;Today’s date : 4 / 23 / 2025
+     6                                  ;Identifier : Final program.
+     7                                  
+     8                                  ; Declarations
+     9                                  %include "utilities.inc"
+    10                              <1> ;Your name : Solivan Hiep
+    11                              <1> ;Your cwid : 884845876
+    12                              <1> ;Your section number : 240 - 3
+    13                              <1> ;Your email address : hiepsolivan @csu.fullerton.edu
+    14                              <1> ;Today’s date : 4 / 23 / 2025
+    15                              <1> ;Identifier : Final program.
+    16                              <1> 
+    17                              <1> ; Macro that backs up the GPRs
+    18                              <1> %macro backup_gprs 0
+    19                              <1>   push rbp
+    20                              <1>   mov rbp, rsp
+    21                              <1>   push rbx
+    22                              <1>   push rcx
+    23                              <1>   push rdx
+    24                              <1>   push rdi
+    25                              <1>   push rsi
+    26                              <1>   push r8
+    27                              <1>   push r9
+    28                              <1>   push r10
+    29                              <1>   push r11
+    30                              <1>   push r12
+    31                              <1>   push r13
+    32                              <1>   push r14
+    33                              <1>   push r15
+    34                              <1>   pushf
+    35                              <1> %endmacro
+    36                              <1> 
+    37                              <1> ; Macro that restores the GPRs
+    38                              <1> %macro restore_gprs 0
+    39                              <1>   popf
+    40                              <1>   pop r15
+    41                              <1>   pop r14
+    42                              <1>   pop r13
+    43                              <1>   pop r12
+    44                              <1>   pop r11
+    45                              <1>   pop r10
+    46                              <1>   pop r9
+    47                              <1>   pop r8
+    48                              <1>   pop rsi
+    49                              <1>   pop rdi
+    50                              <1>   pop rdx
+    51                              <1>   pop rcx
+    52                              <1>   pop rbx
+    53                              <1>   pop rbp
+    54                              <1> %endmacro
+    55                              <1> 
+    56                              <1> ; Macro that back ups non-GPRs/SSEs to an array stored in parameter %1
+    57                              <1> %macro backup_non_gprs 1
+    58                              <1>   mov rax, 7
+    59                              <1>   mov rdx, 0
+    60                              <1>   xsave [%1]
+    61                              <1> %endmacro
+    62                              <1> 
+    63                              <1> ; Macro that restores the non-GPRs/SSEs in storage array of parameter %1
+    64                              <1> %macro restore_non_gprs 1
+    65                              <1>   mov rax, 7
+    66                              <1>   mov rdx, 0
+    67                              <1>   xrstor [%1]
+    68                              <1> %endmacro
+    69                              <1> 
+    70                              <1> ; Macro that obtains the current number of ticks from the clock and places them in rdx
+    71                              <1> %macro extract_tics 0
+    72                              <1>   mov rdx, 0
+    73                              <1>   cpuid
+    74                              <1>   rdtsc
+    75                              <1>   shl rdx, 32
+    76                              <1>   add rdx, rax
+    77                              <1> %endmacro
+    10                                  global manager
+    11                                  extern getqword
+    12                                  
+    13                                  extern printf
+    14                                  extern scanf
+    15                                  
+    16                                  ; Declare initialized arrays
+    17                                  segment .data
+    18 00000000 546865206164647265-     num_add_msg db "The address of -17 is %lx", 10, 0
+    18 00000009 7373206F66202D3137-
+    18 00000012 20697320256C780A00 
+    19 0000001B 506C6561736520656E-     enter_add_prompt db "Please enter an address in hex:  ", 0
+    19 00000024 74657220616E206164-
+    19 0000002D 647265737320696E20-
+    19 00000036 6865783A202000     
+    20 0000003D 54686520696E746567-     int_at_add_msg db "The integer at that address is %lx", 10, 0
+    20 00000046 657220617420746861-
+    20 0000004F 742061646472657373-
+    20 00000058 20697320256C780A00 
+    21 00000061 46756E6374696F6E20-     finished_msg db "Function getqword has finished. A number will be returned to the driver.", 10, 10, 0
+    21 0000006A 67657471776F726420-
+    21 00000073 6861732066696E6973-
+    21 0000007C 6865642E2041206E75-
+    21 00000085 6D6265722077696C6C-
+    21 0000008E 206265207265747572-
+    21 00000097 6E656420746F207468-
+    21 000000A0 65206472697665722E-
+    21 000000A9 0A0A00             
+    22                                  
+    23 000000AC 257300                  string_format db "%s", 0
+    24 000000AF 256C7800                hex_format db "%lx", 0
+    25 000000B3 EFFFFFFFFFFFFFFF        number dq -17
+    26                                  
+    27                                  ; Declare uninitialized arrays
+    28                                  segment .bss
+    29                                  align 64
+    30 00000000 <res 340h>              backup_storage_area resb 832
+    31                                  
+    32 00000340 ????????????????        inputted_add resq 1
+    33                                  
+    34                                  segment .text
+    35                                  manager:
+    36                                  
+    37                                  ; Call the macro that backs up the GPRs
+    38                                  backup_gprs
+    19 00000000 55                  <1>  push rbp
+    20 00000001 4889E5              <1>  mov rbp, rsp
+    21 00000004 53                  <1>  push rbx
+    22 00000005 51                  <1>  push rcx
+    23 00000006 52                  <1>  push rdx
+    24 00000007 57                  <1>  push rdi
+    25 00000008 56                  <1>  push rsi
+    26 00000009 4150                <1>  push r8
+    27 0000000B 4151                <1>  push r9
+    28 0000000D 4152                <1>  push r10
+    29 0000000F 4153                <1>  push r11
+    30 00000011 4154                <1>  push r12
+    31 00000013 4155                <1>  push r13
+    32 00000015 4156                <1>  push r14
+    33 00000017 4157                <1>  push r15
+    34 00000019 9C                  <1>  pushf
+    39                                  
+    40                                  ; Call the macro that backs up the non-GPRs/SSEs into the backup_storage_area
+    41                                  backup_non_gprs backup_storage_area
+    58 0000001A B807000000          <1>  mov rax, 7
+    59 0000001F BA00000000          <1>  mov rdx, 0
+    60 00000024 0FAE2425[00000000]  <1>  xsave [%1]
+    42                                  
+    43                                  ; Print out the current address of initialized number (-17)
+    44 0000002C B800000000              mov rax, 0
+    45 00000031 48BF-                   mov rdi, num_add_msg
+    45 00000033 [0000000000000000] 
+    46 0000003B 48BE-                   mov rsi, number ; Note lack of []
+    46 0000003D [B300000000000000] 
+    47 00000045 E8(00000000)            call printf
+    48                                  
+    49                                  ; Print out the prompt for the user to input a hex address
+    50 0000004A B800000000              mov rax, 0
+    51 0000004F 48BF-                   mov rdi, string_format
+    51 00000051 [AC00000000000000] 
+    52 00000059 48BE-                   mov rsi, enter_add_prompt
+    52 0000005B [1B00000000000000] 
+    53 00000063 E8(00000000)            call printf
+    54                                  
+    55                                  ; User inputs hex address via scanf
+    56 00000068 B800000000              mov rax, 0
+    57 0000006D 48BF-                   mov rdi, hex_format
+    57 0000006F [AF00000000000000] 
+    58 00000077 48BE-                   mov rsi, inputted_add
+    58 00000079 [4003000000000000] 
+    59 00000081 E8(00000000)            call scanf
+    60                                  
+    61                                  ; Call getqword [long getqword(unsigned long add)] to obtain the a copy of the integer at a given address
+    62 00000086 B800000000              mov rax, 0
+    63 0000008B 48BF-                   mov rdi, inputted_add
+    63 0000008D [4003000000000000] 
+    64 00000095 E8(00000000)            call getqword
+    65 0000009A 4989C4                  mov r12, rax
+    66                                  
+    67                                  ; Print out the integer at the inputted address
+    68 0000009D B800000000              mov rax, 0
+    69 000000A2 48BF-                   mov rdi, int_at_add_msg
+    69 000000A4 [3D00000000000000] 
+    70 000000AC 4C89E6                  mov rsi, r12
+    71 000000AF E8(00000000)            call printf
+    72                                  
+    73                                  ; Print out a message stating that the function is completed
+    74 000000B4 B800000000              mov rax, 0
+    75 000000B9 48BF-                   mov rdi, string_format
+    75 000000BB [AC00000000000000] 
+    76 000000C3 48BE-                   mov rsi, finished_msg
+    76 000000C5 [6100000000000000] 
+    77 000000CD E8(00000000)            call printf
+    78                                  
+    79                                  ; Call the macro that restores the non-GPRs/SSEs from the backup_storage_area
+    80                                  restore_non_gprs backup_storage_area
+    65 000000D2 B807000000          <1>  mov rax, 7
+    66 000000D7 BA00000000          <1>  mov rdx, 0
+    67 000000DC 0FAE2C25[00000000]  <1>  xrstor [%1]
+    81                                  
+    82                                  ; Send back the integer to the caller
+    83 000000E4 4C89E0                  mov rax, r12
+    84                                  
+    85                                  ; Call the macro that restores the GPRs
+    86                                  restore_gprs
+    39 000000E7 9D                  <1>  popf
+    40 000000E8 415F                <1>  pop r15
+    41 000000EA 415E                <1>  pop r14
+    42 000000EC 415D                <1>  pop r13
+    43 000000EE 415C                <1>  pop r12
+    44 000000F0 415B                <1>  pop r11
+    45 000000F2 415A                <1>  pop r10
+    46 000000F4 4159                <1>  pop r9
+    47 000000F6 4158                <1>  pop r8
+    48 000000F8 5E                  <1>  pop rsi
+    49 000000F9 5F                  <1>  pop rdi
+    50 000000FA 5A                  <1>  pop rdx
+    51 000000FB 59                  <1>  pop rcx
+    52 000000FC 5B                  <1>  pop rbx
+    53 000000FD 5D                  <1>  pop rbp
+    87                                  
+    88 000000FE C3                      ret

@@ -1,0 +1,107 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Your name as author: Solivan Hiep
+     3                                  ; Your section number: CPSC 240-3
+     4                                  ; Today’s date: March 10, 2025
+     5                                  ; Your preferred return email address: hiepsolivan@csu.fullerton.edu
+     6                                  ;****************************************************************************************************************************
+     7                                  
+     8                                  ; Declarations
+     9                                  extern printf
+    10                                  
+    11                                  global output_array
+    12                                  
+    13                                  ; Declare initialized arrays
+    14                                  segment .data
+    15 00000000 252E396620202000        outputted_number db "%.9f   ", 0
+    16 00000008 0A00                    ending_new_line db "", 10, 0
+    17                                  
+    18                                  ; Declare uninitialized arrays
+    19                                  segment .bss
+    20                                  
+    21                                  align 64
+    22 00000000 <res 340h>              backup_storage_area resb 832
+    23                                  
+    24                                  segment .text
+    25                                  output_array:
+    26                                  
+    27                                  ; Backup the GPRs
+    28 00000000 55                      push rbp
+    29 00000001 4889E5                  mov rbp, rsp
+    30 00000004 53                      push rbx
+    31 00000005 51                      push rcx
+    32 00000006 52                      push rdx
+    33 00000007 57                      push rdi
+    34 00000008 56                      push rsi
+    35 00000009 4150                    push r8
+    36 0000000B 4151                    push r9
+    37 0000000D 4152                    push r10
+    38 0000000F 4153                    push r11
+    39 00000011 4154                    push r12
+    40 00000013 4155                    push r13
+    41 00000015 4156                    push r14
+    42 00000017 4157                    push r15
+    43 00000019 9C                      pushf
+    44                                  
+    45                                  ; Backup other registers/sse registers
+    46 0000001A B807000000              mov rax, 7
+    47 0000001F BA00000000              mov rdx, 0
+    48 00000024 0FAE2425[00000000]      xsave [backup_storage_area]
+    49                                  
+    50                                  ; Move the arguments received (the address to the array + array size) into non-volatile registers r12 and r13 to affect the actual array + future use in logic
+    51 0000002C 4989FC                  mov r12, rdi ; The array
+    52 0000002F 4989F5                  mov r13, rsi ; The array's size
+    53                                  
+    54                                  ; Maintain a counter for the array using the non-volatile register r14 to ensure no over-indexing
+    55 00000032 4D31F6                  xor r14, r14 ; Comparing r14 to itself via xor sets r14 to 0
+    56                                  
+    57                                  ; Kick off the main loop to print out each element in the array
+    58                                  top_of_loop:
+    59                                  
+    60                                  ; Check for over-indexing by determining if r14 >= r13. If so, exit. Otherwise, continue
+    61 00000035 4D39EE                  cmp r14, r13
+    62 00000038 7D1F                    jge out_of_loop
+    63                                  
+    64                                  ; Print out the element in the array [r12] at the counter [r14]
+    65 0000003A B801000000              mov rax, 1
+    66 0000003F 48BF-                   mov rdi, outputted_number
+    66 00000041 [0000000000000000] 
+    67 00000049 F2430F1004F4            movsd xmm0, [r12 + r14 * 8]
+    68 0000004F E8(00000000)            call printf
+    69                                  
+    70                                  ; Increment the counter [r14] by 1 and jump back to the top of the loop
+    71 00000054 49FFC6                  inc r14
+    72 00000057 EBDC                    jmp top_of_loop
+    73                                  ; End of main loop to print out each element in the array
+    74                                  
+    75                                  ; Exit the main loop and complete the program:
+    76                                  out_of_loop:
+    77                                  
+    78                                  ; Print out a new line for nicer formatting
+    79 00000059 B800000000              mov rax, 0
+    80 0000005E 48BF-                   mov rdi, ending_new_line
+    80 00000060 [0800000000000000] 
+    81 00000068 E8(00000000)            call printf
+    82                                  
+    83                                  ; Restore the values to non-GPRs/sse registers
+    84 0000006D B807000000              mov rax, 7
+    85 00000072 BA00000000              mov rdx, 0
+    86 00000077 0FAE2C25[00000000]      xrstor [backup_storage_area]
+    87                                  
+    88                                  ; Restore the GPRs
+    89 0000007F 9D                      popf
+    90 00000080 415F                    pop r15
+    91 00000082 415E                    pop r14
+    92 00000084 415D                    pop r13
+    93 00000086 415C                    pop r12
+    94 00000088 415B                    pop r11
+    95 0000008A 415A                    pop r10
+    96 0000008C 4159                    pop r9
+    97 0000008E 4158                    pop r8
+    98 00000090 5E                      pop rsi
+    99 00000091 5F                      pop rdi
+   100 00000092 5A                      pop rdx
+   101 00000093 59                      pop rcx
+   102 00000094 5B                      pop rbx
+   103 00000095 5D                      pop rbp   ;Restore rbp to the base of the activation record of the caller program
+   104 00000096 C3                      ret
+   105                                  ;End of the function output_array ====================================================================

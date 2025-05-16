@@ -1,0 +1,205 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Your name as author: Solivan Hiep
+     3                                  ; Your section number: CPSC 240-03
+     4                                  ; Today’s date: March 10, 2025
+     5                                  ; Your preferred return email address: hiepsolivan@csu.fullerton.edu
+     6                                  ;****************************************************************************************************************************
+     7                                  
+     8                                  ; Declarations
+     9                                  extern printf
+    10                                  
+    11                                  extern input_array
+    12                                  extern output_array
+    13                                  extern sum_of_reciprocals
+    14                                  global manager
+    15                                  
+    16                                  ; Declare initialized arrays
+    17                                  segment .data
+    18 00000000 57656C636F6D652074-     welcome_msg db "Welcome to Welcome to Harmonic Means.", 10, 0
+    18 00000009 6F2057656C636F6D65-
+    18 00000012 20746F204861726D6F-
+    18 0000001B 6E6963204D65616E73-
+    18 00000024 2E0A00             
+    19 00000027 466F72207468652061-     array_intro_prompt db "For the array enter a sequence of 64-bit floats separated by white space. The upper limit is 10.", 10, 0
+    19 00000030 7272617920656E7465-
+    19 00000039 722061207365717565-
+    19 00000042 6E6365206F66203634-
+    19 0000004B 2D62697420666C6F61-
+    19 00000054 747320736570617261-
+    19 0000005D 746564206279207768-
+    19 00000066 697465207370616365-
+    19 0000006F 2E2054686520757070-
+    19 00000078 6572206C696D697420-
+    19 00000081 69732031302E0A00   
+    20 00000089 416674657220746865-     last_input_intro_prompt db "After the last input press enter followed by Control+D: ", 10, 0
+    20 00000092 206C61737420696E70-
+    20 0000009B 757420707265737320-
+    20 000000A4 656E74657220666F6C-
+    20 000000AD 6C6F77656420627920-
+    20 000000B6 436F6E74726F6C2B44-
+    20 000000BF 3A200A00           
+    21 000000C3 54686573652076616C-     array_status_prompt db "These values are currently stored in the array:", 10, 0
+    21 000000CC 756573206172652063-
+    21 000000D5 757272656E746C7920-
+    21 000000DE 73746F72656420696E-
+    21 000000E7 207468652061727261-
+    21 000000F0 793A0A00           
+    22 000000F4 5468652073756D206F-     sum_of_reciprocals_msg db "The sum of the reciprocals of the elements in the array is %.6lf.", 10, 0
+    22 000000FD 662074686520726563-
+    22 00000106 6970726F63616C7320-
+    22 0000010F 6F662074686520656C-
+    22 00000118 656D656E747320696E-
+    22 00000121 207468652061727261-
+    22 0000012A 7920697320252E366C-
+    22 00000133 662E0A00           
+    23 00000137 546865206861726D6F-     harmonic_mean_msg db "The harmonic mean of the elements in the array is %.6lf. It will be returned to main...", 10, 0
+    23 00000140 6E6963206D65616E20-
+    23 00000149 6F662074686520656C-
+    23 00000152 656D656E747320696E-
+    23 0000015B 207468652061727261-
+    23 00000164 7920697320252E366C-
+    23 0000016D 662E2049742077696C-
+    23 00000176 6C2062652072657475-
+    23 0000017F 726E656420746F206D-
+    23 00000188 61696E2E2E2E0A00   
+    24 00000190 257300                  string_format db "%s", 0
+    25                                  
+    26                                  ; Declare uninitialized arrays
+    27                                  segment .bss
+    28 00000000 <res 180h>              the_array resq 48 ; Allow capacity to be greater than upper limit
+    29                                  align 64
+    30 00000180 <res 340h>              backup_storage_area resb 832
+    31                                  
+    32                                  segment .text
+    33                                  manager:
+    34                                  
+    35                                  ; Backup the GPRs
+    36 00000000 55                      push rbp
+    37 00000001 4889E5                  mov rbp, rsp
+    38 00000004 53                      push rbx
+    39 00000005 51                      push rcx
+    40 00000006 52                      push rdx
+    41 00000007 57                      push rdi
+    42 00000008 56                      push rsi
+    43 00000009 4150                    push r8
+    44 0000000B 4151                    push r9
+    45 0000000D 4152                    push r10
+    46 0000000F 4153                    push r11
+    47 00000011 4154                    push r12
+    48 00000013 4155                    push r13
+    49 00000015 4156                    push r14
+    50 00000017 4157                    push r15
+    51 00000019 9C                      pushf
+    52                                  
+    53                                  ; Backup other registers/sse registers
+    54 0000001A B807000000              mov rax, 7
+    55 0000001F BA00000000              mov rdx, 0
+    56 00000024 0FAE2425[80010000]      xsave [backup_storage_area]
+    57                                  
+    58                                  ; Print out a welcome message
+    59 0000002C B800000000              mov rax, 0
+    60 00000031 48BF-                   mov rdi, string_format
+    60 00000033 [9001000000000000] 
+    61 0000003B 48BE-                   mov rsi, welcome_msg
+    61 0000003D [0000000000000000] 
+    62 00000045 E8(00000000)            call printf
+    63                                  
+    64                                  ; Print out the message instructing the user how to input their numbers
+    65 0000004A B800000000              mov rax, 0
+    66 0000004F 48BF-                   mov rdi, string_format
+    66 00000051 [9001000000000000] 
+    67 00000059 48BE-                   mov rsi, array_intro_prompt
+    67 0000005B [2700000000000000] 
+    68 00000063 E8(00000000)            call printf
+    69                                  
+    70                                  ; Print out the message instructing the user how to exit from inputting
+    71 00000068 B800000000              mov rax, 0
+    72 0000006D 48BF-                   mov rdi, string_format
+    72 0000006F [9001000000000000] 
+    73 00000077 48BE-                   mov rsi, last_input_intro_prompt
+    73 00000079 [8900000000000000] 
+    74 00000081 E8(00000000)            call printf
+    75                                  
+    76                                  ; Input values into the array by input_array [long input_array(double array[], long capacity)]
+    77 00000086 B800000000              mov rax, 0
+    78 0000008B 48BF-                   mov rdi, the_array
+    78 0000008D [0000000000000000] 
+    79 00000095 BE0A000000              mov rsi, 10
+    80 0000009A E8(00000000)            call input_array
+    81 0000009F 4989C4                  mov r12, rax ; Move the size of the array obtained from input_array into a non-volatile register r12
+    82                                  
+    83                                  ; Print out a message in preparation for printing the array
+    84 000000A2 B800000000              mov rax, 0
+    85 000000A7 48BF-                   mov rdi, string_format
+    85 000000A9 [9001000000000000] 
+    86 000000B1 48BE-                   mov rsi, array_status_prompt
+    86 000000B3 [C300000000000000] 
+    87 000000BB E8(00000000)            call printf
+    88                                  
+    89                                  ; Output the values from the array by calling output_array [void output(double array[], long size)]
+    90 000000C0 B800000000              mov rax, 0
+    91 000000C5 48BF-                   mov rdi, the_array
+    91 000000C7 [0000000000000000] 
+    92 000000CF 4C89E6                  mov rsi, r12 ;[r12 = size of array]
+    93 000000D2 E8(00000000)            call output_array
+    94                                  
+    95                                  ; Find the sum of the reciprocals of the array by calling sum_of_reciprocals[double sum_of_reciprocals(double array[], long size)]
+    96 000000D7 B800000000              mov rax, 0
+    97 000000DC 48BF-                   mov rdi, the_array
+    97 000000DE [0000000000000000] 
+    98 000000E6 4C89E6                  mov rsi, r12
+    99 000000E9 E8(00000000)            call sum_of_reciprocals
+   100 000000EE F2440F10E0              movsd xmm12, xmm0 ; Move the sum of the reciprocals obtained into a non-volatile register
+   101                                  
+   102 000000F3 4983C402                add r12, 2
+   103                                  
+   104                                  ; Print out a message indicating what the sum of the reciprocals of the elements in the array are
+   105 000000F7 B801000000              mov rax, 1
+   106 000000FC 48BF-                   mov rdi, sum_of_reciprocals_msg
+   106 000000FE [F400000000000000] 
+   107 00000106 F2410F10C4              movsd xmm0, xmm12
+   108 0000010B E8(00000000)            call printf
+   109                                  
+   110                                  ; Find the harmonic mean: divide the total elements in the array by the sum of the reciprocals
+   111 00000110 F2450F10EC              movsd xmm13, xmm12 ; Compute the harmonic mean in xmm13
+   112 00000115 F24D0F2AF4              cvtsi2sd xmm14, r12 ;  Convert Doubleword Integer to Scalar Double: convert the int r12 into a float to be usable in operations
+   113 0000011A F2450F5EEE              divsd xmm13, xmm14
+   114                                  
+   115                                  ; Print out a message indicating what the harmonic sum of the elements in the array is
+   116 0000011F B801000000              mov rax, 1
+   117 00000124 48BF-                   mov rdi, harmonic_mean_msg
+   117 00000126 [3701000000000000] 
+   118 0000012E F2410F10C5              movsd xmm0, xmm13
+   119 00000133 E8(00000000)            call printf
+   120                                  
+   121                                  ; Prepare to return the harmonic sum by pushing it to the stack
+   122 00000138 B800000000              mov rax, 0
+   123 0000013D 6A00                    push qword 0
+   124 0000013F F2440F112C24            movsd [rsp], xmm13
+   125                                  
+   126                                  ; Restore the values to non-GPRs/sse registers
+   127 00000145 B807000000              mov rax, 7
+   128 0000014A BA00000000              mov rdx, 0
+   129 0000014F 0FAE2C25[80010000]      xrstor [backup_storage_area]
+   130                                  
+   131                                  ; Move the results of the harmonic sum back to main
+   132 00000157 F20F100424              movsd xmm0, [rsp]
+   133 0000015C 58                      pop rax
+   134                                  
+   135                                  ; Restore the GPRs
+   136 0000015D 9D                      popf
+   137 0000015E 415F                    pop r15
+   138 00000160 415E                    pop r14
+   139 00000162 415D                    pop r13
+   140 00000164 415C                    pop r12
+   141 00000166 415B                    pop r11
+   142 00000168 415A                    pop r10
+   143 0000016A 4159                    pop r9
+   144 0000016C 4158                    pop r8
+   145 0000016E 5E                      pop rsi
+   146 0000016F 5F                      pop rdi
+   147 00000170 5A                      pop rdx
+   148 00000171 59                      pop rcx
+   149 00000172 5B                      pop rbx
+   150 00000173 5D                      pop rbp   ;Restore rbp to the base of the activation record of the caller program
+   151 00000174 C3                      ret

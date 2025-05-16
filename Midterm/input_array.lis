@@ -1,0 +1,200 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ; Your name as author: Solivan Hiep
+     3                                  ; Your section number: CPSC 240-03
+     4                                  ; Today’s date: March 10, 2025
+     5                                  ; Your preferred return email address: hiepsolivan@csu.fullerton.edu
+     6                                  ;****************************************************************************************************************************
+     7                                  
+     8                                  ; Declarations
+     9                                  extern atof
+    10                                  extern printf
+    11                                  extern scanf
+    12                                  
+    13                                  extern isfloat
+    14                                  global input_array
+    15                                  
+    16                                  ; Declare initialized arrays
+    17                                  segment .data
+    18 00000000 20202020546865206C-     invalid_input_msg db "    The last input was invalid and not entered into the array.  Try again.", 10, 0
+    18 00000009 61737420696E707574-
+    18 00000012 2077617320696E7661-
+    18 0000001B 6C696420616E64206E-
+    18 00000024 6F7420656E74657265-
+    18 0000002D 6420696E746F207468-
+    18 00000036 652061727261792E20-
+    18 0000003F 205472792061676169-
+    18 00000048 6E2E0A00           
+    19 0000004C 202020205468652061-     capacity_reached_msg db "    The array has reached its capacity.  Exiting...", 10, 0
+    19 00000055 727261792068617320-
+    19 0000005E 726561636865642069-
+    19 00000067 747320636170616369-
+    19 00000070 74792E202045786974-
+    19 00000079 696E672E2E2E0A00   
+    20                                  
+    21 00000081 20202000                whitespace db "   ", 0
+    22 00000085 257300                  string_format db "%s", 0
+    23 00000088 0000000000000000        zero dq 0.0
+    24                                  
+    25                                  ; Declare uninitialized arrays
+    26                                  segment .bss
+    27                                  align 64
+    28 00000000 <res 340h>              backup_storage_area resb 832
+    29                                  
+    30                                  segment .text
+    31                                  input_array:
+    32                                  
+    33                                  ; Backup the GPRs
+    34 00000000 55                      push rbp
+    35 00000001 4889E5                  mov rbp, rsp
+    36 00000004 53                      push rbx
+    37 00000005 51                      push rcx
+    38 00000006 52                      push rdx
+    39 00000007 57                      push rdi
+    40 00000008 56                      push rsi
+    41 00000009 4150                    push r8
+    42 0000000B 4151                    push r9
+    43 0000000D 4152                    push r10
+    44 0000000F 4153                    push r11
+    45 00000011 4154                    push r12
+    46 00000013 4155                    push r13
+    47 00000015 4156                    push r14
+    48 00000017 4157                    push r15
+    49 00000019 9C                      pushf
+    50                                  
+    51                                  ; Backup other registers/sse registers
+    52 0000001A B807000000              mov rax, 7
+    53 0000001F BA00000000              mov rdx, 0
+    54 00000024 0FAE2425[00000000]      xsave [backup_storage_area]
+    55                                  
+    56                                  ; Move the arguments received (the address to the array + array capacity) into non-volatile registers r12 and r13 to affect the actual array + future use in logic
+    57 0000002C 4989FC                  mov r12, rdi ; The array
+    58 0000002F 4989F5                  mov r13, rsi ; The array's capacity
+    59                                  
+    60                                  ; Maintain a counter for the array using the non-volatile register r14 to ensure no over-indexing
+    61 00000032 4D31F6                  xor r14, r14 ; Comparing r14 to itself via xor sets r14 to 0
+    62                                  
+    63                                  ; Kick of the main loop to ask for user input to insert into an array
+    64                                  top_of_loop:
+    65                                  
+    66                                  ; Check for over-indexing by determining if r14 >= r13. If so, exit. Otherwise, continue
+    67 00000035 4D39EE                  cmp r14, r13
+    68 00000038 7D71                    jge capacity_full
+    69                                  
+    70                                  ; Print out leading whitespace before input for formatting
+    71 0000003A B800000000              mov rax, 0
+    72 0000003F 48BF-                   mov rdi, string_format
+    72 00000041 [8500000000000000] 
+    73 00000049 48BE-                   mov rsi, whitespace
+    73 0000004B [8100000000000000] 
+    74 00000053 E8(00000000)            call printf
+    75                                  
+    76                                  ; Prompt for user input for the array. The input is received as a STRING
+    77 00000058 6A00                    push qword 0 ; Ensure scanf reads 64 bits
+    78 0000005A 6A00                    push qword 0
+    79 0000005C B800000000              mov rax, 0
+    80 00000061 48BF-                   mov rdi, string_format
+    80 00000063 [8500000000000000] 
+    81 0000006B 4889E6                  mov rsi, rsp
+    82 0000006E E8(00000000)            call scanf
+    83                                  
+    84                                  ; Check if scanf actually stored the value into the array [r12] by checking if the low of rax (eax) equals -1. If so, jump to scan_ended. Otherwise, continue.
+    85 00000073 83F8FF                  cmp eax, -1 ; Note: This comparison ALSO checks if the user pressed CTRL + D
+    86 00000076 7453                    je scan_ended
+    87                                  
+    88                                  ; Validate the most recent input by calling isfloat [bool isfloat(char [] input)]
+    89 00000078 4889E7                  mov rdi, rsp
+    90 0000007B E8(00000000)            call isfloat
+    91 00000080 4883F800                cmp rax, 0 ; If isfloat returned a 0, then we did not get a float
+    92 00000084 7449                    je try_again
+    93                                  
+    94                                  ; Now that we have a valid float, call atof [double atof (char str[])] to convert the array of ASCII chars into a float
+    95 00000086 B800000000              mov rax, 0
+    96 0000008B 4889E7                  mov rdi, rsp
+    97 0000008E E8(00000000)            call atof ; Stores the float into xmm0
+    98                                  
+    99                                  ; Addendum (3/10/2025): If our float is 0, try again
+   100 00000093 660F2E0425-             ucomisd xmm0, [zero]
+   100 00000098 [88000000]         
+   101 0000009C 7431                    je try_again
+   102                                  
+   103                                  ; Pop the stack as we are now done with the user-inputted float
+   104 0000009E 58                      pop rax
+   105 0000009F 58                      pop rax
+   106                                  
+   107                                  ; Insert the user-inputted float into the array [r12] at the counter's [r14] current position
+   108 000000A0 F2430F1104F4            movsd [r12 + r14 * 8], xmm0
+   109                                  
+   110                                  ; Increment the counter by one and restart the main loop if everything goes well
+   111 000000A6 49FFC6                  inc r14
+   112 000000A9 EB8A                    jmp top_of_loop
+   113                                  ; End of the main loop to ask for user input to insert into the array
+   114                                  
+   115                                  ;; Jump here if the array is now full
+   116                                  capacity_full:
+   117                                  
+   118                                  ;; Print out a message telling the user the array is full
+   119 000000AB B800000000              mov rax, 0
+   120 000000B0 48BF-                   mov rdi, string_format
+   120 000000B2 [8500000000000000] 
+   121 000000BA 48BE-                   mov rsi, capacity_reached_msg
+   121 000000BC [4C00000000000000] 
+   122 000000C4 E8(00000000)            call printf
+   123                                  
+   124                                  ;; Exit the main loop
+   125 000000C9 EB29                    jmp out_of_loop
+   126                                  ;; End of capacity_full to inform user the array is full
+   127                                  
+   128                                  ;; Jump here if scanf failed OR CTRL + D was pressed to end the main loop
+   129                                  scan_ended:
+   130                                  
+   131                                  ;; Pop what is currently on the stack (to avoid segmentation faults) then exit the loop
+   132 000000CB 58                      pop rax
+   133 000000CC 58                      pop rax
+   134 000000CD EB25                    jmp out_of_loop
+   135                                  ;; End of scan_ended to end the main loop if scanf failed OR CTRL + D was pressed
+   136                                  
+   137                                  ;; Jump here if you scanf did NOT receive a float to inform the user of invalid input and let them try again
+   138                                  try_again:
+   139                                  
+   140                                  ;; Print out a message for the user to try again
+   141 000000CF B800000000              mov rax, 0
+   142 000000D4 48BF-                   mov rdi, string_format
+   142 000000D6 [8500000000000000] 
+   143 000000DE 48BE-                   mov rsi, invalid_input_msg
+   143 000000E0 [0000000000000000] 
+   144 000000E8 E8(00000000)            call printf
+   145                                  
+   146                                  ;; Pop the failed input on the stack (to avoid segmentation faults) then jump back to the top of the main loop
+   147 000000ED 58                      pop rax
+   148 000000EE 58                      pop rax
+   149 000000EF E941FFFFFF              jmp top_of_loop
+   150                                  ;; End of try_again to inform the user of invalid input and let them try again
+   151                                  
+   152                                  ; Exit the main loop and complete the program
+   153                                  out_of_loop:
+   154                                  
+   155                                  ; Restore the values to non-GPRs/sse registers
+   156 000000F4 B807000000              mov rax, 7
+   157 000000F9 BA00000000              mov rdx, 0
+   158 000000FE 0FAE2C25[00000000]      xrstor [backup_storage_area]
+   159                                  
+   160                                  ; Send back the array's size stored in r14
+   161 00000106 4C89F0                  mov rax, r14
+   162                                  
+   163                                  ; Restore the GPRs
+   164 00000109 9D                      popf
+   165 0000010A 415F                    pop r15
+   166 0000010C 415E                    pop r14
+   167 0000010E 415D                    pop r13
+   168 00000110 415C                    pop r12
+   169 00000112 415B                    pop r11
+   170 00000114 415A                    pop r10
+   171 00000116 4159                    pop r9
+   172 00000118 4158                    pop r8
+   173 0000011A 5E                      pop rsi
+   174 0000011B 5F                      pop rdi
+   175 0000011C 5A                      pop rdx
+   176 0000011D 59                      pop rcx
+   177 0000011E 5B                      pop rbx
+   178 0000011F 5D                      pop rbp
+   179 00000120 C3                      ret
